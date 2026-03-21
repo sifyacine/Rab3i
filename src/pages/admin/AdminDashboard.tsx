@@ -1,0 +1,122 @@
+import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
+import { useEffect } from "react";
+import {
+  LayoutDashboard, Briefcase, FileText, Settings, Users,
+  MessageSquare, Star, Building2, LogOut, PanelRight
+} from "lucide-react";
+import {
+  SidebarProvider, Sidebar, SidebarContent, SidebarHeader,
+  SidebarMenu, SidebarMenuItem, SidebarMenuButton,
+  SidebarGroup, SidebarGroupLabel, SidebarGroupContent,
+  SidebarFooter, SidebarTrigger, useSidebar,
+} from "@/components/ui/sidebar";
+import { toast } from "sonner";
+
+const menuItems = [
+  { title: "لوحة القيادة", icon: LayoutDashboard, url: "/admin" },
+  { title: "المشاريع", icon: Briefcase, url: "/admin/projects" },
+  { title: "المدونة", icon: FileText, url: "/admin/blog" },
+  { title: "الخدمات", icon: Star, url: "/admin/services" },
+  { title: "العملاء", icon: Building2, url: "/admin/clients" },
+  { title: "الطلبات", icon: MessageSquare, url: "/admin/requests" },
+  { title: "المستخدمون", icon: Users, url: "/admin/users" },
+  { title: "الإعدادات", icon: Settings, url: "/admin/settings" },
+];
+
+function AdminSidebar() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("melaha_mock_auth");
+    toast.success("تم تسجيل الخروج");
+    navigate("/login");
+  };
+
+  return (
+    <Sidebar collapsible="icon" side="right">
+      <SidebarHeader className="border-b border-border/40 p-4">
+        <Link to="/" className="text-xl font-bold text-gradient">مِلاحة</Link>
+        <span className="text-[10px] text-muted-foreground">لوحة التحكم</span>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>القائمة الرئيسية</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {menuItems.map((item) => {
+                const isActive = location.pathname === item.url ||
+                  (item.url !== "/admin" && location.pathname.startsWith(item.url));
+                return (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
+                      <Link to={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="border-t border-border/40 p-3">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={handleLogout} tooltip="تسجيل الخروج">
+              <LogOut className="h-4 w-4" />
+              <span>تسجيل الخروج</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
+
+function AdminHeader() {
+  const location = useLocation();
+  const current = menuItems.find(
+    (m) => m.url === location.pathname || (m.url !== "/admin" && location.pathname.startsWith(m.url))
+  );
+
+  return (
+    <header className="flex h-14 items-center gap-3 border-b border-border/40 bg-card/50 px-4 backdrop-blur-sm">
+      <SidebarTrigger>
+        <PanelRight className="h-5 w-5" />
+      </SidebarTrigger>
+      <h2 className="text-sm font-semibold text-foreground">{current?.title || "لوحة التحكم"}</h2>
+    </header>
+  );
+}
+
+const AdminDashboard = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const auth = localStorage.getItem("melaha_mock_auth");
+    if (!auth) {
+      navigate("/login");
+    }
+  }, [navigate]);
+
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background">
+        <AdminSidebar />
+        <div className="flex flex-1 flex-col">
+          <AdminHeader />
+          <main className="flex-1 p-6">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
+  );
+};
+
+export default AdminDashboard;

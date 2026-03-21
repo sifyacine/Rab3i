@@ -1,0 +1,155 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 6% 7%;
+    --foreground: 0 0% 95%;
+
+    --card: 240 6% 10%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 240 6% 10%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 270 60% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 6% 14%;
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 240 5% 18%;
+    --muted-foreground: 240 5% 55%;
+
+    --accent: 280 70% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 5% 18%;
+    --input: 240 5% 18%;
+    --ring: 270 60% 58%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 240 6% 7%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 270 60% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 6% 14%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 240 5% 18%;
+    --sidebar-ring: 270 60% 58%;
+
+    /* Brand tokens */
+    --brand-purple: 270 60% 58%;
+    --brand-violet: 280 70% 50%;
+    --brand-blue: 230 70% 50%;
+    --glass-bg: 240 6% 12%;
+    --glass-border: 240 5% 22%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'IBM Plex Sans Arabic', sans-serif;
+    direction: rtl;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: hsla(var(--glass-bg) / 0.6);
+    backdrop-filter: blur(16px);
+    border: 1px solid hsla(var(--glass-border) / 0.3);
+  }
+
+  .glass-strong {
+    background: hsla(var(--glass-bg) / 0.8);
+    backdrop-filter: blur(24px);
+    border: 1px solid hsla(var(--glass-border) / 0.4);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, hsl(var(--brand-purple)), hsl(var(--brand-violet)), hsl(var(--brand-blue)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-gradient-brand {
+    background: linear-gradient(135deg, hsl(var(--brand-purple)), hsl(var(--brand-violet)));
+  }
+}
+
+/* Animated gradient background */
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-20px) rotate(2deg); }
+  66% { transform: translateY(10px) rotate(-1deg); }
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.animate-gradient {
+  background-size: 300% 300%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
