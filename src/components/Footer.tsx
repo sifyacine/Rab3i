@@ -6,10 +6,12 @@ const Footer = () => (
     <div className="container mx-auto px-6">
       <div className="grid gap-12 md:grid-cols-4">
         {/* Brand */}
-        <div className="md:col-span-1">
-          <h3 className="mb-4 text-2xl font-bold text-gradient">مِلاحة</h3>
+        <div className="md:col-span-1 text-center md:text-start">
+          <div className="mb-4 flex items-center justify-center md:justify-start gap-2">
+            <img src="/Logo Arabic Version 02.png" alt="ربيعي" className="h-10 w-auto" />
+          </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            الشريك الإبداعي اللي يساعدك على إيصال رسائلك بشكل إبداعي يبني تصوّر ويحقق هدف
+            الشريك الإبداعي اللي تساعدك على إيصال رسائلك بشكل إبداعي يبني تصوّر ويحقق هدف
           </p>
         </div>
 
@@ -65,7 +67,7 @@ const Footer = () => (
       </div>
 
       <div className="mt-12 border-t border-border/30 pt-8 text-center">
-        <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} مِلاحة. جميع الحقوق محفوظة</p>
+        <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} ربيعي. جميع الحقوق محفوظة</p>
       </div>
     </div>
   </footer>

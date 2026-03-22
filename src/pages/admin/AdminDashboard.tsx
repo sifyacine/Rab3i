@@ -25,19 +25,26 @@ const menuItems = [
 
 function AdminSidebar() {
   const location = useLocation();
+  const { state } = useSidebar();
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem("melaha_mock_auth");
+    localStorage.removeItem("rabii_mock_auth");
     toast.success("تم تسجيل الخروج");
     navigate("/login");
   };
 
   return (
     <Sidebar collapsible="icon" side="right">
-      <SidebarHeader className="border-b border-border/40 p-4">
-        <Link to="/" className="text-xl font-bold text-gradient">مِلاحة</Link>
-        <span className="text-[10px] text-muted-foreground">لوحة التحكم</span>
+      <SidebarHeader className="border-b border-border/40 p-4 group-data-[collapsible=icon]:p-2">
+        <Link to="/" className="flex items-center justify-center w-full">
+          {state === "expanded" ? (
+            <img src="/Logo Arabic Version 02.png" alt="ربيعي" className="h-10 w-auto transition-all" />
+          ) : (
+            <img src="/favicon.png" alt="ربيعي" className="h-8 w-auto transition-all" />
+          )}
+        </Link>
+        <span className="text-[10px] text-muted-foreground text-center group-data-[collapsible=icon]:hidden">لوحة التحكم</span>
       </SidebarHeader>
 
       <SidebarContent>
@@ -98,7 +105,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const auth = localStorage.getItem("melaha_mock_auth");
+    const auth = localStorage.getItem("rabii_mock_auth");
     if (!auth) {
       navigate("/login");
     }

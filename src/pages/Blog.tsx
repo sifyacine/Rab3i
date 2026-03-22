@@ -54,7 +54,7 @@ const Blog = () => (
       <div className="container mx-auto px-6">
         <ScrollReveal className="mb-16 text-center">
           <h1 className="mb-4 text-4xl font-bold text-foreground sm:text-5xl">المدونة</h1>
-          <p className="text-muted-foreground">أفكار ورؤى من فريق مِلاحة</p>
+          <p className="text-muted-foreground">أفكار ورؤى من فريق ربيعي</p>
         </ScrollReveal>
 
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">

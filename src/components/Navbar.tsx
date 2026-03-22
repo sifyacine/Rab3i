@@ -37,8 +37,8 @@ const Navbar = () => {
         }`}
       >
         <div className="container mx-auto flex items-center justify-between px-6 py-4">
-          <Link to="/" className="text-2xl font-bold text-gradient">
-            مِلاحة
+          <Link to="/" className="flex items-center gap-2 text-2xl font-bold">
+            <img src="/Logo Arabic Version 02.png" alt="ربيعي" className="h-10 w-auto" />
           </Link>
 
           {/* Desktop */}

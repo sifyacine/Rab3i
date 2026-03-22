@@ -5,7 +5,7 @@ import ScrollReveal from "../ScrollReveal";
 const CTASection = () => (
   <section className="relative py-32 overflow-hidden">
     {/* Animated bg */}
-    <div className="absolute inset-0 animate-gradient bg-gradient-to-br from-[hsl(270,60%,15%)] via-[hsl(260,50%,10%)] to-[hsl(280,60%,12%)] bg-[length:300%_300%]" />
+    <div className="absolute inset-0 animate-gradient bg-gradient-to-br from-[hsl(0,84%,15%)] via-[hsl(350,70%,10%)] to-[hsl(10,60%,12%)] bg-[length:300%_300%]" />
     <div className="absolute inset-0 opacity-[0.04]" style={{
       backgroundImage: "radial-gradient(circle at 1px 1px, hsl(var(--foreground)) 1px, transparent 0)",
       backgroundSize: "40px 40px",

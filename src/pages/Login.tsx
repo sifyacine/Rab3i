@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 const Login = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("admin@melaha.sa");
+  const [email, setEmail] = useState("admin@rabii.sa");
   const [password, setPassword] = useState("admin123");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -17,7 +17,7 @@ const Login = () => {
     // Mock auth — just validate non-empty
     setTimeout(() => {
       if (email && password) {
-        localStorage.setItem("melaha_mock_auth", JSON.stringify({ email, role: "admin" }));
+        localStorage.setItem("rabii_mock_auth", JSON.stringify({ email, role: "admin" }));
         toast.success("تم تسجيل الدخول بنجاح");
         navigate("/admin");
       } else {
@@ -30,7 +30,7 @@ const Login = () => {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
       {/* Background */}
-      <div className="absolute inset-0 animate-gradient bg-gradient-to-br from-[hsl(270,60%,12%)] via-[hsl(250,50%,8%)] to-[hsl(280,60%,10%)] bg-[length:300%_300%]" />
+      <div className="absolute inset-0 animate-gradient bg-gradient-to-br from-[hsl(0,84%,12%)] via-[hsl(350,70%,8%)] to-[hsl(10,60%,10%)] bg-[length:300%_300%]" />
 
       <motion.div
         initial={{ opacity: 0, y: 30, filter: "blur(8px)" }}
@@ -40,7 +40,9 @@ const Login = () => {
       >
         <div className="rounded-2xl border border-border/40 bg-card/80 p-8 backdrop-blur-xl shadow-2xl shadow-black/20">
           <div className="mb-8 text-center">
-            <Link to="/" className="mb-6 inline-block text-3xl font-bold text-gradient">مِلاحة</Link>
+            <Link to="/" className="mb-6 flex flex-col items-center justify-center">
+              <img src="/Logo Arabic Version 02.png" alt="ربيعي" className="h-16 w-auto" />
+            </Link>
             <h1 className="text-xl font-bold text-foreground">لوحة التحكم</h1>
             <p className="mt-2 text-sm text-muted-foreground">سجّل دخولك لإدارة المحتوى</p>
           </div>
@@ -55,7 +57,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-xl border border-border/50 bg-secondary/50 py-3 pr-10 pl-4 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-                  placeholder="admin@melaha.sa"
+                  placeholder="admin@rabii.sa"
                 />
               </div>
             </div>

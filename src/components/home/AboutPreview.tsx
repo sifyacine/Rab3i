@@ -12,7 +12,7 @@ const AboutPreview = () => (
             نحول أفكارك إلى تجارب إبداعية مؤثرة
           </h2>
           <p className="mb-4 leading-relaxed text-muted-foreground" style={{ textWrap: "pretty" }}>
-            مِلاحة هي الشريك الإبداعي اللي تساعدك على إيصال رسائلك بشكل إبداعي يبني تصوّر ويحقق هدف. نؤمن أن كل علامة تجارية تستحق قصة تُروى بطريقة مختلفة.
+            ربيعي هي الشريك الإبداعي اللي تساعدك على إيصال رسائلك بشكل إبداعي يبني تصوّر ويحقق هدف. نؤمن أن كل علامة تجارية تستحق قصة تُروى بطريقة مختلفة.
           </p>
           <p className="mb-8 leading-relaxed text-muted-foreground">
             فريقنا يجمع بين الإبداع والاستراتيجية لتقديم حلول تسويقية متكاملة تحقق نتائج ملموسة.
@@ -31,7 +31,7 @@ const AboutPreview = () => (
             <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/20 via-accent/10 to-transparent" />
             <div className="absolute inset-4 rounded-2xl border border-border/30 bg-card/50 backdrop-blur-sm" />
             <div className="absolute inset-8 flex items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-accent/5">
-              <span className="text-6xl font-bold text-gradient">مِلاحة</span>
+              <span className="text-4xl sm:text-6xl font-bold text-gradient">ربيعي</span>
             </div>
           </div>
         </ScrollReveal>

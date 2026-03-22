@@ -1,4 +1,37 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
+@font-face {
+  font-family: 'KOSans';
+  src: url('/Arabic script used for texts/KOSans-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'KOSans';
+  src: url('/Arabic script used for texts/KOSans-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'KOSans';
+  src: url('/Arabic script used for texts/KOSans-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'KOSans';
+  src: url('/Arabic script used for texts/KOSans-SemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'KOSans';
+  src: url('/Arabic script used for texts/KOSans-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
 
 @tailwind base;
 @tailwind components;
@@ -15,7 +48,7 @@
     --popover: 240 6% 10%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 270 60% 58%;
+    --primary: 358 86% 52%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 240 6% 14%;
@@ -24,7 +57,7 @@
     --muted: 240 5% 18%;
     --muted-foreground: 240 5% 55%;
 
-    --accent: 280 70% 50%;
+    --accent: 358 86% 52%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
@@ -32,22 +65,22 @@
 
     --border: 240 5% 18%;
     --input: 240 5% 18%;
-    --ring: 270 60% 58%;
+    --ring: 358 86% 52%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 240 6% 7%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 270 60% 58%;
+    --sidebar-primary: 358 86% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 6% 14%;
     --sidebar-accent-foreground: 0 0% 90%;
     --sidebar-border: 240 5% 18%;
-    --sidebar-ring: 270 60% 58%;
+    --sidebar-ring: 358 86% 52%;
 
     /* Brand tokens */
-    --brand-purple: 270 60% 58%;
-    --brand-violet: 280 70% 50%;
+    --brand-red-1: 358 86% 52%;
+    --brand-red-2: 350 80% 50%;
     --brand-blue: 230 70% 50%;
     --glass-bg: 240 6% 12%;
     --glass-border: 240 5% 22%;
@@ -67,8 +100,11 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'IBM Plex Sans Arabic', sans-serif;
+    font-family: 'KOSans', sans-serif;
     direction: rtl;
+    text-rendering: optimizeSpeed;
+    overflow-x: hidden;
+    width: 100%;
   }
 }
 
@@ -86,14 +122,14 @@
   }
 
   .text-gradient {
-    background: linear-gradient(135deg, hsl(var(--brand-purple)), hsl(var(--brand-violet)), hsl(var(--brand-blue)));
+    background: linear-gradient(135deg, hsl(var(--brand-red-1)), hsl(var(--brand-red-2)), hsl(var(--brand-blue)));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .bg-gradient-brand {
-    background: linear-gradient(135deg, hsl(var(--brand-purple)), hsl(var(--brand-violet)));
+    background: linear-gradient(135deg, hsl(var(--brand-red-1)), hsl(var(--brand-red-2)));
   }
 }
 

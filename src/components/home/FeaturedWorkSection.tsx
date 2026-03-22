@@ -3,10 +3,10 @@ import { Link } from "react-router-dom";
 import ScrollReveal from "../ScrollReveal";
 
 const projects = [
-  { title: "هوية بصرية لشركة تقنية", category: "علامة تجارية", color: "from-[hsl(270,60%,35%)] to-[hsl(300,50%,25%)]" },
-  { title: "حملة إطلاق منتج رقمي", category: "حملات تسويقية", color: "from-[hsl(230,60%,30%)] to-[hsl(260,50%,22%)]" },
-  { title: "محتوى سوشال ميديا", category: "إنتاج محتوى", color: "from-[hsl(200,55%,30%)] to-[hsl(230,50%,20%)]" },
-  { title: "تصميم تطبيق جوال", category: "علامة تجارية", color: "from-[hsl(280,55%,30%)] to-[hsl(310,45%,22%)]" },
+  { title: "هوية بصرية لشركة تقنية", category: "علامة تجارية", color: "from-[hsl(0,84%,35%)] to-[hsl(350,70%,25%)]" },
+  { title: "حملة إطلاق منتج رقمي", category: "حملات تسويقية", color: "from-[hsl(15,80%,30%)] to-[hsl(0,70%,22%)]" },
+  { title: "محتوى سوشال ميديا", category: "إنتاج محتوى", color: "from-[hsl(340,75%,30%)] to-[hsl(355,60%,20%)]" },
+  { title: "تصميم تطبيق جوال", category: "علامة تجارية", color: "from-[hsl(10,80%,35%)] to-[hsl(350,70%,25%)]" },
 ];
 
 const FeaturedWorkSection = () => (

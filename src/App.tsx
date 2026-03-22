@@ -14,7 +14,13 @@ import Request from "./pages/Request";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import DashboardHome from "./pages/admin/DashboardHome";
-import AdminPlaceholder from "./pages/admin/AdminPlaceholder";
+import ProjectsAdmin from "./pages/admin/Projects";
+import BlogAdmin from "./pages/admin/Blog";
+import ServicesAdmin from "./pages/admin/Services";
+import ClientsAdmin from "./pages/admin/Clients";
+import RequestsAdmin from "./pages/admin/Requests";
+import UsersAdmin from "./pages/admin/Users";
+import SettingsAdmin from "./pages/admin/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,13 +42,13 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminDashboard />}>
             <Route index element={<DashboardHome />} />
-            <Route path="projects" element={<AdminPlaceholder />} />
-            <Route path="blog" element={<AdminPlaceholder />} />
-            <Route path="services" element={<AdminPlaceholder />} />
-            <Route path="clients" element={<AdminPlaceholder />} />
-            <Route path="requests" element={<AdminPlaceholder />} />
-            <Route path="users" element={<AdminPlaceholder />} />
-            <Route path="settings" element={<AdminPlaceholder />} />
+            <Route path="projects" element={<ProjectsAdmin />} />
+            <Route path="blog" element={<BlogAdmin />} />
+            <Route path="services" element={<ServicesAdmin />} />
+            <Route path="clients" element={<ClientsAdmin />} />
+            <Route path="requests" element={<RequestsAdmin />} />
+            <Route path="users" element={<UsersAdmin />} />
+            <Route path="settings" element={<SettingsAdmin />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

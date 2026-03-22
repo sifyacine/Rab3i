@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 import ScrollReveal from "@/components/ScrollReveal";
 
 const timeline = [
-  { year: "٢٠٢٠", title: "البداية", desc: "انطلقت مِلاحة بفكرة بسيطة: إبداع يحقق أهداف" },
+  { year: "٢٠٢٠", title: "البداية", desc: "انطلقت ربيعي بفكرة بسيطة: إبداع يحقق أهداف" },
   { year: "٢٠٢١", title: "النمو", desc: "وسعنا فريقنا وخدماتنا لنشمل التسويق المتكامل" },
   { year: "٢٠٢٢", title: "التميز", desc: "حققنا أكثر من ٥٠ مشروع ناجح مع عملاء مميزين" },
   { year: "٢٠٢٣", title: "التوسع", desc: "دخلنا أسواق جديدة وطورنا خدمات المحتوى الإبداعي" },
@@ -27,7 +27,7 @@ const About = () => (
         <ScrollReveal className="mb-24 text-center">
           <h1 className="mb-6 text-4xl font-bold text-foreground sm:text-5xl">من نحن</h1>
           <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            مِلاحة هي الشريك الإبداعي اللي تساعدك على إيصال رسائلك بشكل إبداعي يبني تصوّر ويحقق هدف
+            ربيعي هي الشريك الإبداعي اللي تساعدك على إيصال رسائلك بشكل إبداعي يبني تصوّر ويحقق هدف
           </p>
         </ScrollReveal>
 

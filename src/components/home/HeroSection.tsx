@@ -6,17 +6,17 @@ const HeroSection = () => {
   return (
     <section className="relative flex min-h-screen items-center justify-center overflow-hidden">
       {/* Animated gradient background */}
-      <div className="absolute inset-0 animate-gradient bg-gradient-to-br from-[hsl(270,60%,12%)] via-[hsl(250,50%,8%)] to-[hsl(280,60%,10%)] bg-[length:300%_300%]" />
+      <div className="absolute inset-0 animate-gradient bg-gradient-to-br from-[hsl(0,84%,12%)] via-[hsl(350,70%,8%)] to-[hsl(10,60%,10%)] bg-[length:300%_300%]" />
 
-      {/* Abstract floating shapes */}
+      {/* Abstract floating shapes - Reduced for mobile performance */}
       {[...Array(5)].map((_, i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full opacity-20 blur-3xl"
+          className={`absolute rounded-full opacity-20 blur-3xl ${i > 1 ? 'hidden sm:block' : ''}`}
           style={{
             width: 200 + i * 120,
             height: 200 + i * 120,
-            background: `radial-gradient(circle, hsl(${270 + i * 15}, 60%, ${40 + i * 5}%), transparent)`,
+            background: `radial-gradient(circle, hsl(${0 + i * 5}, 80%, ${40 + i * 5}%), transparent)`,
             top: `${15 + i * 15}%`,
             right: `${10 + i * 18}%`,
           }}
@@ -75,7 +75,7 @@ const HeroSection = () => {
         >
           مو صعب تطلق حملة، ولكن مو أي حملة تأثر وتحقق هدفك.
           <br className="hidden sm:block" />
-          مِلاحة هي الشريك اللي يبني تصوّر ويوصل رسالتك بشكل مختلف
+          ربيعي هي الشريك اللي يبني تصوّر ويوصل رسالتك بشكل مختلف
         </motion.p>
 
         <motion.div

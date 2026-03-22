@@ -9,12 +9,12 @@ import { useCursorFollow, useCardTilt } from "@/hooks/use-cursor-follow";
 const categories = ["الكل", "علامة تجارية", "حملات تسويقية", "إنتاج محتوى"];
 
 const projects = [
-  { title: "هوية بصرية لشركة تقنية", category: "علامة تجارية", color: "from-[hsl(270,60%,35%)] to-[hsl(300,50%,25%)]", size: "tall" },
-  { title: "حملة إطلاق منتج رقمي", category: "حملات تسويقية", color: "from-[hsl(230,60%,30%)] to-[hsl(260,50%,22%)]", size: "normal" },
-  { title: "محتوى سوشال ميديا", category: "إنتاج محتوى", color: "from-[hsl(200,55%,30%)] to-[hsl(230,50%,20%)]", size: "normal" },
-  { title: "تصميم تطبيق جوال", category: "علامة تجارية", color: "from-[hsl(280,55%,30%)] to-[hsl(310,45%,22%)]", size: "wide" },
-  { title: "حملة رمضانية متكاملة", category: "حملات تسويقية", color: "from-[hsl(250,55%,30%)] to-[hsl(280,50%,22%)]", size: "normal" },
-  { title: "فيديوهات موشن جرافيك", category: "إنتاج محتوى", color: "from-[hsl(210,60%,28%)] to-[hsl(240,50%,20%)]", size: "tall" },
+  { title: "هوية بصرية لشركة تقنية", category: "علامة تجارية", color: "from-[hsl(0,84%,35%)] to-[hsl(350,70%,25%)]", size: "tall" },
+  { title: "حملة إطلاق منتج رقمي", category: "حملات تسويقية", color: "from-[hsl(15,80%,30%)] to-[hsl(0,70%,22%)]", size: "normal" },
+  { title: "محتوى سوشال ميديا", category: "إنتاج محتوى", color: "from-[hsl(340,75%,30%)] to-[hsl(355,60%,20%)]", size: "normal" },
+  { title: "تصميم تطبيق جوال", category: "علامة تجارية", color: "from-[hsl(10,80%,35%)] to-[hsl(350,70%,25%)]", size: "wide" },
+  { title: "حملة رمضانية متكاملة", category: "حملات تسويقية", color: "from-[hsl(20,75%,35%)] to-[hsl(5,65%,25%)]", size: "normal" },
+  { title: "فيديوهات موشن جرافيك", category: "إنتاج محتوى", color: "from-[hsl(355,80%,30%)] to-[hsl(340,70%,20%)]", size: "tall" },
 ];
 
 const ProjectCard = ({ project, index }: { project: typeof projects[0]; index: number }) => {
@@ -68,7 +68,7 @@ const ProjectCard = ({ project, index }: { project: typeof projects[0]; index: n
             <div
               className="pointer-events-none absolute z-10 h-64 w-64 rounded-full transition-opacity duration-300"
               style={{
-                background: "radial-gradient(circle, hsla(270,60%,60%,0.15) 0%, transparent 70%)",
+                background: "radial-gradient(circle, hsla(0,84%,60%,0.15) 0%, transparent 70%)",
                 left: pos.x - 128,
                 top: pos.y - 128,
               }}
@@ -124,7 +124,7 @@ const Portfolio = () => {
       <main className="pb-20">
         {/* Hero with parallax */}
         <div ref={heroRef} className="relative flex min-h-[60vh] items-center justify-center overflow-hidden">
-          <div className="absolute inset-0 animate-gradient bg-gradient-to-br from-[hsl(270,60%,12%)] via-[hsl(250,50%,8%)] to-[hsl(280,60%,10%)] bg-[length:300%_300%]" />
+          <div className="absolute inset-0 animate-gradient bg-gradient-to-br from-[hsl(0,84%,12%)] via-[hsl(350,70%,8%)] to-[hsl(10,60%,10%)] bg-[length:300%_300%]" />
           <motion.div style={{ y: heroY, opacity: heroOpacity }} className="relative z-10 text-center px-6">
             <ScrollReveal>
               <h1 className="mb-4 text-5xl font-bold text-foreground sm:text-6xl lg:text-7xl" style={{ lineHeight: 1.2 }}>أعمالنا</h1>
