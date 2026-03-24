@@ -5,9 +5,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Save, User, Globe, Bell, Shield } from "lucide-react";
+import { Save, User, Globe, Bell, Shield, Moon, Sun } from "lucide-react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 const Settings = () => {
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === "light") {
+      root.classList.add("light");
+    } else {
+      root.classList.remove("light");
+    }
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const handleSave = () => {
+    toast.success("تم حفظ الإعدادات بنجاح");
+  };
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -16,7 +33,7 @@ const Settings = () => {
     >
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">الإعدادات</h1>
-        <Button className="bg-gradient-brand">
+        <Button className="bg-gradient-brand" onClick={handleSave}>
           <Save className="ml-2 h-4 w-4" />
           حفظ التغييرات
         </Button>
@@ -40,6 +57,32 @@ const Settings = () => {
               <div className="space-y-2">
                 <Label htmlFor="email">البريد الإلكتروني</Label>
                 <Input id="email" defaultValue="admin@rabii.sa" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/40 bg-card/30">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Sun className="h-5 w-5 text-primary" />
+              <CardTitle>مظهر اللوحة</CardTitle>
+            </div>
+            <CardDescription>اختر الوضع الذي يريحك (فاتح أو داكن)</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>الوضع الفاتح</Label>
+                <p className="text-sm text-muted-foreground">تفعيل المظهر الفاتح للوحة التحكم</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Moon className="h-4 w-4 text-muted-foreground" />
+                <Switch 
+                  checked={theme === "light"} 
+                  onCheckedChange={(checked) => setTheme(checked ? "light" : "dark")} 
+                />
+                <Sun className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>
           </CardContent>

@@ -1,8 +1,6 @@
 import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
-import { useEffect } from "react";
 import {
-  LayoutDashboard, Briefcase, FileText, Settings, Users,
-  MessageSquare, Star, Building2, LogOut, PanelRight
+  LayoutDashboard, Briefcase, FileText, MessageSquare, LogOut, PanelRight, Phone, Mail, User, Moon, Sun
 } from "lucide-react";
 import {
   SidebarProvider, Sidebar, SidebarContent, SidebarHeader,
@@ -10,29 +8,26 @@ import {
   SidebarGroup, SidebarGroupLabel, SidebarGroupContent,
   SidebarFooter, SidebarTrigger, useSidebar,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 const menuItems = [
-  { title: "لوحة القيادة", icon: LayoutDashboard, url: "/admin" },
-  { title: "المشاريع", icon: Briefcase, url: "/admin/projects" },
-  { title: "المدونة", icon: FileText, url: "/admin/blog" },
-  { title: "الخدمات", icon: Star, url: "/admin/services" },
-  { title: "الطلبات", icon: MessageSquare, url: "/admin/requests" },
-  { title: "العملاء", icon: Building2, url: "/admin/clients" },
-  { title: "الفواتير", icon: FileText, url: "/admin/invoices" },
-  { title: "المستخدمون", icon: Users, url: "/admin/users" },
-  { title: "محتوى الموقع", icon: LayoutDashboard, url: "/admin/site-content" },
-  { title: "الإعدادات", icon: Settings, url: "/admin/settings" },
+  { title: "الرئيسية", icon: LayoutDashboard, url: "/portal" },
+  { title: "مشاريعي", icon: Briefcase, url: "/portal/projects" },
+  { title: "طلباتي", icon: MessageSquare, url: "/portal/requests" },
+  { title: "الفواتير", icon: FileText, url: "/portal/invoices" },
+  { title: "الملف الشخصي", icon: User, url: "/portal/profile" },
+  { title: "الدعم الفني", icon: MessageSquare, url: "/portal/support" },
 ];
 
-function AdminSidebar() {
+function PortalSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem("rabii_mock_auth");
-    toast.success("تم تسجيل الخروج");
+    localStorage.removeItem("rabii_portal_auth");
+    toast.success("تم تسجيل الخروج من بوابة العملاء");
     navigate("/login");
   };
 
@@ -46,22 +41,22 @@ function AdminSidebar() {
             <img src="/favicon.png" alt="ربيعي" className="h-8 w-auto transition-all" />
           )}
         </Link>
-        <span className="text-[10px] text-muted-foreground text-center group-data-[collapsible=icon]:hidden">لوحة التحكم</span>
+        <span className="text-[10px] text-muted-foreground text-center group-data-[collapsible=icon]:hidden">بوابة العملاء</span>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>القائمة الرئيسية</SidebarGroupLabel>
+          <SidebarGroupLabel>قائمة العميل</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => {
                 const isActive = location.pathname === item.url ||
-                  (item.url !== "/admin" && location.pathname.startsWith(item.url));
+                  (item.url !== "/portal" && location.pathname.startsWith(item.url));
                 return (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
                       <Link to={item.url}>
-                        <item.icon className={state === "collapsed" ? "h-8 w-8" : "h-4 w-4"} />
+                        <item.icon className={state === "collapsed" ? "h-6 w-6" : "h-4 w-4"} />
                         <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -77,7 +72,7 @@ function AdminSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={handleLogout} tooltip="تسجيل الخروج">
-              <LogOut className={state === "collapsed" ? "h-8 w-8" : "h-4 w-4"} />
+              <LogOut className={state === "collapsed" ? "h-6 w-6" : "h-4 w-4"} />
               <span>تسجيل الخروج</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -87,10 +82,10 @@ function AdminSidebar() {
   );
 }
 
-function AdminHeader() {
+function PortalHeader() {
   const location = useLocation();
   const current = menuItems.find(
-    (m) => m.url === location.pathname || (m.url !== "/admin" && location.pathname.startsWith(m.url))
+    (m) => m.url === location.pathname || (m.url !== "/portal" && location.pathname.startsWith(m.url))
   );
 
   return (
@@ -98,27 +93,36 @@ function AdminHeader() {
       <SidebarTrigger>
         <PanelRight className="h-5 w-5" />
       </SidebarTrigger>
-      <h2 className="text-sm font-semibold text-foreground">{current?.title || "لوحة التحكم"}</h2>
+      <h2 className="text-sm font-semibold text-foreground">{current?.title || "بوابة العملاء"}</h2>
+      <div className="mr-auto flex items-center gap-4">
+        <a href="tel:+966500000000" className="text-muted-foreground hover:text-primary transition-colors">
+          <Phone className="h-4 w-4" />
+        </a>
+        <a href="mailto:support@rabii.sa" className="text-muted-foreground hover:text-primary transition-colors">
+          <Mail className="h-4 w-4" />
+        </a>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => document.documentElement.classList.toggle("light")}
+          className="h-9 w-9 text-muted-foreground hover:text-primary"
+        >
+          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all light:rotate-90 light:scale-0" />
+          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all light:rotate-0 light:scale-100" />
+          <span className="sr-only">Toggle theme</span>
+        </Button>
+      </div>
     </header>
   );
 }
 
-const AdminDashboard = () => {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const auth = localStorage.getItem("rabii_mock_auth");
-    if (!auth) {
-      navigate("/login");
-    }
-  }, [navigate]);
-
+const PortalLayout = () => {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
-        <AdminSidebar />
+        <PortalSidebar />
         <div className="flex flex-1 flex-col">
-          <AdminHeader />
+          <PortalHeader />
           <main className="flex-1 p-6">
             <Outlet />
           </main>
@@ -128,4 +132,4 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default PortalLayout;

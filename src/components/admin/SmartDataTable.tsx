@@ -34,6 +34,9 @@ interface SmartDataTableProps<T> {
   cardSubtitle?: (item: T) => string;
   cardContent?: (item: T) => React.ReactNode;
   actions?: (item: T) => React.ReactNode;
+  onAdd?: () => void;
+  onRowClick?: (item: T) => void;
+  addButtonLabel?: string;
 }
 
 export function SmartDataTable<T extends { id: string | number }>({
@@ -44,6 +47,9 @@ export function SmartDataTable<T extends { id: string | number }>({
   cardSubtitle,
   cardContent,
   actions,
+  onAdd,
+  onRowClick,
+  addButtonLabel = "إضافة جديد",
 }: SmartDataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -72,9 +78,15 @@ export function SmartDataTable<T extends { id: string | number }>({
             <Filter className="h-3.5 w-3.5" />
             <span>تصفية</span>
           </Button>
-          <Button size="sm" className="h-9 bg-gradient-brand hover:shadow-lg hover:shadow-primary/20 transition-all">
-            إضافة جديد
-          </Button>
+          {onAdd && (
+            <Button 
+              size="sm" 
+              onClick={onAdd}
+              className="h-9 bg-gradient-brand hover:shadow-lg hover:shadow-primary/20 transition-all"
+            >
+              {addButtonLabel}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -93,7 +105,11 @@ export function SmartDataTable<T extends { id: string | number }>({
           </TableHeader>
           <TableBody>
             {filteredData.map((item) => (
-              <TableRow key={item.id}>
+              <TableRow 
+                key={item.id} 
+                className={onRowClick ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
+                onClick={() => onRowClick && onRowClick(item)}
+              >
                 {columns.map((column) => (
                   <TableCell key={column.header} className="text-right">
                     {column.cell
@@ -126,7 +142,11 @@ export function SmartDataTable<T extends { id: string | number }>({
       {/* Mobile view */}
       <div className="grid grid-cols-1 gap-4 md:hidden">
         {filteredData.map((item) => (
-          <Card key={item.id} className="border-border/40 bg-card/30 overflow-hidden group">
+          <Card 
+            key={item.id} 
+            className={`border-border/40 bg-card/30 overflow-hidden group ${onRowClick ? "cursor-pointer active:scale-[0.98] transition-all" : ""}`}
+            onClick={() => onRowClick && onRowClick(item)}
+          >
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-base">{cardTitle(item)}</CardTitle>

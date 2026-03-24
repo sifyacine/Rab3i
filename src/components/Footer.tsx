@@ -24,6 +24,7 @@ const Footer = () => (
               { label: "خدماتنا", path: "/services" },
               { label: "أعمالنا", path: "/portfolio" },
               { label: "المدونة", path: "/blog" },
+              { label: "دخول العملاء", path: "/login" },
             ].map((l) => (
               <Link key={l.path} to={l.path} className="text-sm text-muted-foreground transition-colors hover:text-primary">
                 {l.label}

@@ -62,6 +62,12 @@ const Navbar = () => {
               </Link>
             ))}
             <Link
+              to="/login"
+              className="text-sm font-medium text-foreground/70 transition-colors hover:text-primary"
+            >
+              بوابة العملاء
+            </Link>
+            <Link
               to="/request"
               className="rounded-lg bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-white transition-all duration-300 hover:shadow-lg hover:shadow-primary/25 active:scale-[0.97]"
             >
@@ -111,7 +117,14 @@ const Navbar = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.4 }}
+              className="flex flex-col items-center gap-4"
             >
+              <Link
+                to="/login"
+                className="text-xl font-medium text-foreground/80 hover:text-primary transition-colors"
+              >
+                بوابة العملاء
+              </Link>
               <Link
                 to="/request"
                 className="rounded-lg bg-gradient-brand px-8 py-3 text-lg font-semibold text-white"

@@ -17,9 +17,11 @@ const Login = () => {
     // Mock auth — just validate non-empty
     setTimeout(() => {
       if (email && password) {
-        localStorage.setItem("rabii_mock_auth", JSON.stringify({ email, role: "admin" }));
+        const role = email.includes("admin") ? "admin" : "client";
+        const authKey = role === "admin" ? "rabii_mock_auth" : "rabii_portal_auth";
+        localStorage.setItem(authKey, JSON.stringify({ email, role }));
         toast.success("تم تسجيل الدخول بنجاح");
-        navigate("/admin");
+        navigate(role === "admin" ? "/admin" : "/portal");
       } else {
         toast.error("يرجى إدخال البريد الإلكتروني وكلمة المرور");
       }
@@ -43,8 +45,8 @@ const Login = () => {
             <Link to="/" className="mb-6 flex flex-col items-center justify-center">
               <img src="/Logo Arabic Version 02.png" alt="ربيعي" className="h-16 w-auto" />
             </Link>
-            <h1 className="text-xl font-bold text-foreground">لوحة التحكم</h1>
-            <p className="mt-2 text-sm text-muted-foreground">سجّل دخولك لإدارة المحتوى</p>
+            <h1 className="text-xl font-bold text-foreground">تسجيل الدخول</h1>
+            <p className="mt-2 text-sm text-muted-foreground">ادخل إلى لوحة التحكم أو بوابة العملاء</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -63,7 +65,16 @@ const Login = () => {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-foreground/80">كلمة المرور</label>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="block text-sm font-medium text-foreground/80">كلمة المرور</label>
+                <button 
+                  type="button" 
+                  onClick={() => toast.info("سيتم إرسال رابط استعادة كلمة المرور لبريدك قريباً")}
+                  className="text-xs text-primary hover:underline transition-all"
+                >
+                  نسيت كلمة المرور؟
+                </button>
+              </div>
               <div className="relative">
                 <Lock size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
@@ -77,6 +88,17 @@ const Login = () => {
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input 
+                type="checkbox" 
+                id="remember" 
+                className="h-4 w-4 rounded border-border/50 bg-secondary/50 accent-primary"
+              />
+              <label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer select-none">
+                تذكرني على هذا الجهاز
+              </label>
             </div>
 
             <button
