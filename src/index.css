@@ -161,14 +161,14 @@
 
 @layer utilities {
   .glass {
-    background: hsla(var(--glass-bg) / 0.6);
-    backdrop-filter: blur(16px);
+    background: hsla(var(--glass-bg) / 0.7);
+    backdrop-filter: blur(8px);
     border: 1px solid hsla(var(--glass-border) / 0.3);
   }
 
   .glass-strong {
-    background: hsla(var(--glass-bg) / 0.8);
-    backdrop-filter: blur(24px);
+    background: hsla(var(--glass-bg) / 0.85);
+    backdrop-filter: blur(12px);
     border: 1px solid hsla(var(--glass-border) / 0.4);
   }
 
@@ -217,6 +217,7 @@
 
 .animate-marquee {
   animation: marquee 30s linear infinite;
+  will-change: transform;
 }
 
 .animate-pulse-glow {

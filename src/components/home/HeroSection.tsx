@@ -25,6 +25,7 @@ const HeroSection = () => {
             background: `radial-gradient(circle, hsl(${0 + i * 5}, 80%, ${40 + i * 5}%), transparent)`,
             top: `${15 + i * 15}%`,
             right: `${10 + i * 18}%`,
+            willChange: "transform",
           }}
           animate={{
             x: [0, 30 * (i % 2 === 0 ? 1 : -1), 0],
@@ -51,8 +52,8 @@ const HeroSection = () => {
       {/* Content */}
       <div className="relative z-10 container mx-auto px-6 text-center">
         <motion.div
-          initial={{ opacity: 0, y: 30, filter: "blur(8px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         >
           <span className="mb-6 inline-block rounded-full border border-primary/30 bg-primary/10 px-5 py-2 text-xs font-medium text-primary">
@@ -61,8 +62,8 @@ const HeroSection = () => {
         </motion.div>
 
         <motion.h1
-          initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
           className="mx-auto mb-6 max-w-4xl text-3xl font-bold leading-[1.3] tracking-tight text-foreground sm:text-4xl md:text-5xl lg:text-6xl"
           style={{ textWrap: "balance" }}
@@ -73,8 +74,8 @@ const HeroSection = () => {
         </motion.h1>
 
         <motion.p
-          initial={{ opacity: 0, y: 30, filter: "blur(6px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
           className="mx-auto mb-10 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base"
           style={{ textWrap: "pretty" }}
