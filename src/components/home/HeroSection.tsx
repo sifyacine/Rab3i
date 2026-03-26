@@ -6,7 +6,13 @@ const HeroSection = () => {
   return (
     <section className="relative flex min-h-screen items-center justify-center overflow-hidden">
       {/* Animated gradient background */}
-      <div className="absolute inset-0 animate-gradient bg-gradient-to-br from-[hsl(0,84%,12%)] via-[hsl(350,70%,8%)] to-[hsl(10,60%,10%)] bg-[length:300%_300%]" />
+      <div 
+        className="absolute inset-0 animate-gradient bg-[length:300%_300%]" 
+        style={{ 
+          background: "var(--hero-gradient)",
+          backgroundColor: "var(--hero-bg)" 
+        }} 
+      />
 
       {/* Abstract floating shapes - Reduced for mobile performance */}
       {[...Array(5)].map((_, i) => (
@@ -58,7 +64,7 @@ const HeroSection = () => {
           initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           transition={{ duration: 0.9, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-          className="mx-auto mb-6 max-w-4xl text-4xl font-bold leading-[1.3] tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl"
+          className="mx-auto mb-6 max-w-4xl text-3xl font-bold leading-[1.3] tracking-tight text-foreground sm:text-4xl md:text-5xl lg:text-6xl"
           style={{ textWrap: "balance" }}
         >
           وصّل رسالتك
@@ -70,7 +76,7 @@ const HeroSection = () => {
           initial={{ opacity: 0, y: 30, filter: "blur(6px)" }}
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           transition={{ duration: 0.8, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          className="mx-auto mb-10 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
+          className="mx-auto mb-10 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base"
           style={{ textWrap: "pretty" }}
         >
           مو صعب تطلق حملة، ولكن مو أي حملة تأثر وتحقق هدفك.

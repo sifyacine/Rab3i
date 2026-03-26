@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +49,13 @@ const Users = () => {
       header: "الدور",
       accessorKey: "role" as const,
       cell: (item: AdminUser) => (
-        <Badge variant={item.role === "admin" ? "default" : "secondary"}>
+        <Badge 
+          variant={item.role === "admin" ? "default" : "secondary"}
+          className={cn(
+            "font-medium",
+            item.role === "admin" ? "bg-primary text-white" : "bg-secondary text-secondary-foreground"
+          )}
+        >
           {item.role === "admin" ? "مدير" : "محرر"}
         </Badge>
       ),

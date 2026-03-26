@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Sun, Moon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const navLinks = [
   { label: "الرئيسية", path: "/" },
@@ -20,6 +21,33 @@ const Navbar = () => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const [isLight, setIsLight] = useState(false);
+
+  useEffect(() => {
+    const isLightMode = document.documentElement.classList.contains("light");
+    setIsLight(isLightMode);
+  }, []);
+
+  const toggleTheme = () => {
+    const newIsLight = !isLight;
+    setIsLight(newIsLight);
+    if (newIsLight) {
+      document.documentElement.classList.add("light");
+      localStorage.setItem("rabii-theme", "light");
+    } else {
+      document.documentElement.classList.remove("light");
+      localStorage.setItem("rabii-theme", "dark");
+    }
+  };
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("rabii-theme");
+    if (savedTheme === "light") {
+      document.documentElement.classList.add("light");
+      setIsLight(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -73,6 +101,14 @@ const Navbar = () => {
             >
               تواصل معنا
             </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="h-9 w-9 text-foreground/70 hover:text-primary"
+            >
+              {isLight ? <Moon size={18} /> : <Sun size={18} />}
+            </Button>
           </div>
 
           {/* Mobile toggle */}
@@ -105,7 +141,7 @@ const Navbar = () => {
               >
                 <Link
                   to={link.path}
-                  className={`text-2xl font-semibold transition-colors ${
+                  className={`text-xl font-semibold transition-colors ${
                     location.pathname === link.path ? "text-primary" : "text-foreground/80"
                   }`}
                 >
@@ -121,7 +157,7 @@ const Navbar = () => {
             >
               <Link
                 to="/login"
-                className="text-xl font-medium text-foreground/80 hover:text-primary transition-colors"
+                className="text-lg font-medium text-foreground/80 hover:text-primary transition-colors"
               >
                 بوابة العملاء
               </Link>
@@ -131,6 +167,17 @@ const Navbar = () => {
               >
                 تواصل معنا
               </Link>
+              <Button
+                variant="outline"
+                onClick={toggleTheme}
+                className="mt-4 gap-2 rounded-xl"
+              >
+                {isLight ? (
+                  <><Moon size={18} /> الوضع الليلي</>
+                ) : (
+                  <><Sun size={18} /> الوضع المضيء</>
+                )}
+              </Button>
             </motion.div>
           </motion.div>
         )}

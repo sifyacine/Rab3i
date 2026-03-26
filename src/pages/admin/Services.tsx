@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +54,13 @@ const ServicesAdmin = () => {
       header: "الحالة",
       accessorKey: "status" as const,
       cell: (item: Service) => (
-        <Badge variant={item.status === "active" ? "default" : "secondary"}>
+        <Badge 
+          variant={item.status === "active" ? "default" : "secondary"}
+          className={cn(
+            "font-medium",
+            item.status === "active" ? "bg-emerald-500 text-white" : "bg-slate-500/10 text-slate-500 border-slate-500/20"
+          )}
+        >
           {item.status === "active" ? "نشط" : "غير نشط"}
         </Badge>
       ),

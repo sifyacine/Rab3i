@@ -248,7 +248,7 @@ const ProjectFormAdmin = () => {
     <div className="max-w-3xl mx-auto space-y-8" dir="rtl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{isEditing ? "تعديل المشروع" : "مشروع جديد"}</h1>
+          <h1 className="text-2xl font-bold">{isEditing ? "تعديل المشروع" : "مشروع جديد"}</h1>
           <p className="text-muted-foreground mt-1">أكمل الخطوات التالية لإضافة بيانات المشروع بدقة.</p>
         </div>
         <Button variant="ghost" asChild>

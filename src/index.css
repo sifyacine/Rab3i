@@ -84,6 +84,9 @@
     --brand-blue: 230 70% 50%;
     --glass-bg: 240 6% 12%;
     --glass-border: 240 5% 22%;
+    
+    --hero-gradient: linear-gradient(to bottom right, hsl(0, 84%, 12%), hsl(350, 70%, 8%), hsl(10, 60%, 10%));
+    --hero-bg: transparent;
   }
 
   .light {
@@ -128,6 +131,9 @@
 
     --glass-bg: 0 0% 100%;
     --glass-border: 240 5.9% 90%;
+    
+    --hero-gradient: radial-gradient(circle at 50% -20%, hsl(358 86% 96%), transparent 70%);
+    --hero-bg: hsl(0 0% 100%);
   }
 }
 
@@ -137,6 +143,7 @@
   }
 
   html {
+    font-size: 14px;
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

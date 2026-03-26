@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,12 @@ const Requests = () => {
             item.status === "analysis" ? "default" :
             item.status === "replied" ? "secondary" : "destructive"
           }
+          className={cn(
+            "font-medium",
+            item.status === "analysis" ? "bg-blue-500 text-white" :
+            item.status === "replied" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : 
+            "bg-slate-500/10 text-slate-600 border-slate-500/20"
+          )}
         >
           {item.status === "analysis" ? "جديد (تحليل)" :
            item.status === "replied" ? "تم الرد" : "مغلق"}

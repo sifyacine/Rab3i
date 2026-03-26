@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -50,10 +51,10 @@ const Clients = () => {
       accessorKey: "name" as const,
       cell: (item: Client) => (
         <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback>{item.name[0]}</AvatarFallback>
+          <Avatar className="h-9 w-9 border border-border/50">
+            <AvatarFallback className="bg-primary/10 text-primary font-bold">{item.name[0]}</AvatarFallback>
           </Avatar>
-          <span>{item.name}</span>
+          <span className="font-medium">{item.name}</span>
         </div>
       ),
     },

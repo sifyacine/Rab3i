@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Badge } from "@/components/ui/badge";
@@ -45,13 +46,13 @@ export interface Project {
   milestones?: Milestone[];
 }
 
-export const statusMap: Record<ProjectStatus, { label: string, variant: string }> = {
-  analysis: { label: "قيد المراجعة / التحليل", variant: "secondary" },
-  in_discussion: { label: "قيد النقاش / الاجتماع", variant: "outline" },
-  offered: { label: "تم تقديم العرض", variant: "outline" },
-  ongoing: { label: "قيد التنفيذ", variant: "default" },
-  completed: { label: "مكتمل", variant: "default" },
-  archived: { label: "مؤرشف", variant: "destructive" },
+export const statusMap: Record<ProjectStatus, { label: string, variant: string, className?: string }> = {
+  analysis: { label: "قيد المراجعة / التحليل", variant: "secondary", className: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+  in_discussion: { label: "قيد النقاش / الاجتماع", variant: "outline", className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+  offered: { label: "تم تقديم العرض", variant: "outline", className: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20" },
+  ongoing: { label: "قيد التنفيذ", variant: "default", className: "bg-primary text-white" },
+  completed: { label: "مكتمل", variant: "default", className: "bg-emerald-500 text-white" },
+  archived: { label: "مؤرشف", variant: "destructive", className: "bg-red-500/10 text-red-600 border-red-500/20" },
 };
 
 const mockProjects: Project[] = [
@@ -110,7 +111,7 @@ const Projects = () => {
       cell: (item: Project) => (
         <Badge
           variant={statusMap[item.status].variant as any}
-          className="font-normal"
+          className={cn("font-medium", statusMap[item.status].className)}
         >
           {statusMap[item.status].label}
         </Badge>

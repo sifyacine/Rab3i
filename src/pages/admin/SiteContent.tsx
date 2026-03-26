@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Save, Layout, ListChecks, MessageSquare, Image as ImageIcon } from "lucide-react";
+import { Save, Layout, ListChecks, MessageSquare, Image as ImageIcon, Building2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const SiteContent = () => {
@@ -15,11 +15,12 @@ const SiteContent = () => {
     heroTitle: "نحول رؤيتك الرقمية إلى واقع ملموس",
     heroSubtitle: "استوديو إبداعي متخصص في بناء التجارب الرقمية الفريدة التي تجمع بين الفن والتقنية",
     processSteps: [
-      { id: 1, title: "التحليل والتخطيط", description: "نبدأ بفهم عميق لأهدافك وجمهورك المستهدف" },
+      { id: 1, title: "التحليل والتخطيط", description: "نبدأ بفهم عميق لأهدافك وجمهورك مستهدف" },
       { id: 2, title: "التصميم الإبداعي", description: "نبتكر هوية بصرية وتجربة مستخدم لا تُنسى" },
       { id: 3, title: "التطوير البرمجي", description: "نحول التصاميم إلى كود عالي الأداء وقابل للتوسع" },
       { id: 4, title: "الإطلاق والدعم", description: "نرافقك في مرحلة الإطلاق ونضمن استمرارية النجاح" }
     ],
+    partners: ["شركة النخبة", "مجموعة الريادة", "تقنية المستقبل", "منصة ابتكار", "حلول رقمية", "شركة الأفق", "مؤسسة البناء", "شركة المسار"],
     ctaText: "ابدأ مشروعك الآن"
   });
 
@@ -59,6 +60,9 @@ const SiteContent = () => {
           </TabsTrigger>
           <TabsTrigger value="cta" className="rounded-lg gap-2">
             <MessageSquare className="h-4 w-4" /> نداء العمل (CTA)
+          </TabsTrigger>
+          <TabsTrigger value="partners" className="rounded-lg gap-2">
+            <Building2 className="h-4 w-4" /> شركاء النجاح
           </TabsTrigger>
         </TabsList>
 
@@ -146,6 +150,48 @@ const SiteContent = () => {
                   value={content.ctaText} 
                   onChange={(e) => setContent({...content, ctaText: e.target.value})}
                 />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="partners" className="mt-6 space-y-6">
+          <Card className="border-border/40 bg-card/30">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>شركاء النجاح</CardTitle>
+                <CardDescription>إدارة أسماء الشركات التي تظهر في شريط الشركاء</CardDescription>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-2"
+                onClick={() => {
+                  const name = prompt("أدخل اسم الشريك الجديد:");
+                  if (name) setContent({...content, partners: [...content.partners, name]});
+                }}
+              >
+                إضافة شريك
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {content.partners.map((partner, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 rounded-xl border border-border/20 bg-background/30 group">
+                    <span className="text-sm">{partner}</span>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => {
+                        const newPartners = content.partners.filter((_, i) => i !== index);
+                        setContent({...content, partners: newPartners});
+                      }}
+                    >
+                      ×
+                    </Button>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>

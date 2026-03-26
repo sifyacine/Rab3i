@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +63,12 @@ const InvoicesAdmin = () => {
             item.status === "unpaid" ? "secondary" : 
             item.status === "canceled" ? "outline" : "destructive"
           }
+          className={cn(
+            "font-medium",
+            item.status === "paid" ? "bg-emerald-500 text-white" :
+            item.status === "unpaid" ? "bg-amber-500/10 text-amber-600 border-amber-500/20" : 
+            item.status === "canceled" ? "bg-slate-500/10 text-slate-600 border-slate-500/20" : ""
+          )}
         >
           {item.status === "paid" ? "مدفوعة" :
            item.status === "unpaid" ? "غير مدفوعة" :
