@@ -100,8 +100,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    if (supabase) {
-      await supabase.auth.signOut();
+    try {
+      if (supabase) {
+        // Sign out from Supabase (clears auth session across tabs)
+        await supabase.auth.signOut({ scope: "global" });
+      }
+    } finally {
+      // Ensure local auth state is fully cleared immediately
+      setSession(null);
+      setUser(null);
+      setRole(null);
+      setLoading(false);
     }
   };
 

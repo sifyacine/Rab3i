@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Sun, Moon, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 const navLinks = [
   { label: "الرئيسية", path: "/" },
@@ -17,6 +19,8 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, role, signOut } = useAuth();
 
   useEffect(() => {
@@ -58,7 +62,12 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     await signOut();
+    // Clear any cached data that might depend on the authenticated user
+    queryClient.clear();
     setMobileOpen(false);
+    toast.success("تم تسجيل الخروج بنجاح");
+    // Always send the user back to the public home page after logout
+    navigate("/", { replace: true });
   };
 
   return (
