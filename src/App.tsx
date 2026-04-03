@@ -16,6 +16,7 @@ import About from "./pages/public/About";
 import PublicBlog from "./pages/public/Blog";
 import BlogDetail from "./pages/public/BlogDetail";
 import Portfolio from "./pages/public/Portfolio";
+import ProjectDetails from "./pages/public/ProjectDetails";
 import PublicServices from "./pages/public/Services";
 import ProjectRequest from "./pages/public/Request";
 
@@ -73,6 +74,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/services" element={<PublicServices />} />
             <Route path="/portfolio" element={<Portfolio />} />
+            <Route path="/portfolio/:slug" element={<ProjectDetails />} />
             <Route path="/blog" element={<PublicBlog />} />
             <Route path="/blog/:id" element={<BlogDetail />} />
             <Route path="/about" element={<About />} />

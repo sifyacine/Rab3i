@@ -20,8 +20,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { statusMap, ProjectStatus } from "./Projects";
+export type ProjectStatus = "analysis" | "in_discussion" | "offered" | "ongoing" | "completed" | "archived";
 
+export const statusMap: Record<ProjectStatus, { label: string; variant: string }> = {
+  analysis: { label: "تحليل", variant: "secondary" },
+  in_discussion: { label: "قيد المناقشة", variant: "outline" },
+  offered: { label: "تم تقديم العرض", variant: "secondary" },
+  ongoing: { label: "جاري التنفيذ", variant: "default" },
+  completed: { label: "مكتمل", variant: "default" }, // Using valid badge variants
+  archived: { label: "مؤرشف", variant: "destructive" },
+};
 const ProjectDetailsAdmin = () => {
   const { id } = useParams();
   const navigate = useNavigate();

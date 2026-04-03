@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  ArrowRight, ArrowLeft, Check, Info, Briefcase, 
-  User, Calendar, ExternalLink, ChevronRight, ChevronLeft, DollarSign
+  Check, Info, Briefcase, ChevronRight, ChevronLeft, Image as ImageIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -17,67 +17,97 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-
-export type ProjectStatus = "pending_approval" | "in_discussion" | "offered" | "ongoing" | "completed" | "archived";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { projectsService } from "@/services/projectsService";
+import { categoryService } from "@/services/categoryService";
+import { mediaService } from "@/services/mediaService";
 
 const steps = [
   { id: 1, title: "المعلومات الأساسية", icon: Briefcase },
-  { id: 2, title: "التفاصيل والحالة", icon: Info },
-  { id: 3, title: "التواريخ والروابط", icon: Calendar },
+  { id: 2, title: "التفاصيل والنشر", icon: Info },
+  { id: 3, title: "الوسائط والصور", icon: ImageIcon },
 ];
 
 const ProjectFormAdmin = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
+  const queryClient = useQueryClient();
   const isEditing = !!id;
   
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<any>({
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  
+  const [formData, setFormData] = useState({
     title: "",
-    client: "",
-    category: "",
-    status: "pending_approval",
+    slug: "",
+    category_id: "",
     description: "",
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: "",
-    budget: "",
-    link: ""
+    is_published: false,
+    cover_image: "",
+  });
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => categoryService.getCategories()
+  });
+
+  const { data: projectToEdit } = useQuery({
+    queryKey: ["project", id],
+    queryFn: () => projectsService.getProjects().then(res => res.data.find(p => p.id === id)),
+    enabled: isEditing
   });
 
   useEffect(() => {
-    // Check if we are passing a request from RequestsAdmin
-    if (location.state?.request && !isEditing) {
-      const req = location.state.request;
-      setFormData((prev: any) => ({
-        ...prev,
-        client: req.sender,
-        title: req.type,
-        status: "pending_approval",
-        description: `تم إنشاء هذا المشروع بناءً على طلب من ${req.sender} بتاريخ ${req.date}.\nنوع الطلب: ${req.type}`,
-      }));
-      toast.info("تم ملء البيانات من الطلب المعتمد");
-    }
-
-    if (isEditing) {
-      // In a real app, fetch project by ID. Here we mock it.
+    if (projectToEdit) {
       setFormData({
-        id: "1", 
-        title: "موقع شركة النبراس", 
-        category: "تطوير ويب", 
-        client: "النبراس العقارية", 
-        status: "completed", 
-        progress: 100,
-        description: "تطوير موقع تعريفي متكامل لشركة النبراس العقارية مع لوحة تحكم.",
-        startDate: "2024-03-15",
-        link: "https://al-nebras.com"
+        title: projectToEdit.title,
+        slug: projectToEdit.slug,
+        category_id: projectToEdit.category_id || "",
+        description: projectToEdit.description || "",
+        is_published: projectToEdit.is_published,
+        cover_image: projectToEdit.cover_image || "",
       });
     }
-  }, [id, isEditing, location.state]);
+  }, [projectToEdit]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      let cover_image = formData.cover_image;
+      if (coverFile) {
+        toast.loading("جاري رفع الصورة الشاملة...", { id: "upload" });
+        cover_image = await mediaService.uploadMedia(coverFile, `cover`);
+        toast.dismiss("upload");
+      }
+
+      const payload = {
+        title: formData.title,
+        slug: formData.slug || formData.title.toLowerCase().replace(/\s+/g, '-'),
+        category_id: formData.category_id || undefined,
+        description: formData.description,
+        is_published: formData.is_published,
+        cover_image
+      };
+
+      if (isEditing) {
+        return projectsService.updateProject(id!, payload);
+      } else {
+        return projectsService.createProject(payload as any);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success(isEditing ? "تم تحديث المشروع بنجاح" : "تم إضافة المشروع بنجاح");
+      navigate("/admin/projects");
+    },
+    onError: (err: any) => {
+      toast.dismiss("upload");
+      toast.error(err.message || "حدث خطأ غير متوقع");
+    }
+  });
 
   const nextStep = () => {
-    if (currentStep === 1 && (!formData.title || !formData.client || !formData.category)) {
-      toast.error("يرجى إكمال الحقول الأساسية");
+    if (currentStep === 1 && (!formData.title || !formData.category_id)) {
+      toast.error("يرجى تعبئة العنوان والفئة");
       return;
     }
     if (currentStep < steps.length) setCurrentStep(currentStep + 1);
@@ -87,54 +117,47 @@ const ProjectFormAdmin = () => {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
-  const handleSave = () => {
-    toast.success(isEditing ? "تم تحديث المشروع بنجاح" : "تم إضافة المشروع بنجاح");
-    navigate("/admin/projects");
-  };
-
   const renderStep = () => {
     switch (currentStep) {
       case 1:
         return (
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }} 
-            animate={{ opacity: 1, x: 0 }} 
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
-          >
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="title">اسم المشروع</Label>
                 <Input 
                   id="title" 
                   value={formData.title} 
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="مثال: موقع شركة النبراس" 
+                  onChange={(e) => {
+                    const slug = e.target.value.toLowerCase().replace(/\s+/g, '-');
+                    setFormData({ ...formData, title: e.target.value, slug });
+                  }}
+                  placeholder="مثال: واجهة تطبيق محاسبي" 
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="client">العميل</Label>
+                <Label htmlFor="slug">الرابط المخصص (Slug)</Label>
                 <Input 
-                  id="client" 
-                  value={formData.client} 
-                  onChange={(e) => setFormData({ ...formData, client: e.target.value })}
-                  placeholder="اسم العميل أو الشركة" 
+                  id="slug" 
+                  value={formData.slug} 
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  placeholder="my-awesome-project" 
+                  dir="ltr"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="category">الفئة</Label>
                 <Select 
-                  value={formData.category} 
-                  onValueChange={(v) => setFormData({ ...formData, category: v })}
+                  value={formData.category_id} 
+                  onValueChange={(v) => setFormData({ ...formData, category_id: v })}
                 >
                   <SelectTrigger id="category">
                     <SelectValue placeholder="اختر الفئة" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="تطوير ويب">تطوير ويب</SelectItem>
-                    <SelectItem value="تطبيق جوال">تطبيق جوال</SelectItem>
-                    <SelectItem value="تصميم جرافيك">تصميم جرافيك</SelectItem>
-                    <SelectItem value="تسويق رقمي">تسويق رقمي</SelectItem>
+                    {categoriesData?.map(cat => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -143,31 +166,18 @@ const ProjectFormAdmin = () => {
         );
       case 2:
         return (
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }} 
-            animate={{ opacity: 1, x: 0 }} 
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
-          >
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="status">الحالة</Label>
-                <Select 
-                  value={formData.status} 
-                  onValueChange={(v: any) => setFormData({ ...formData, status: v })}
-                >
-                  <SelectTrigger id="status">
-                    <SelectValue placeholder="اختر الحالة" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending_approval">قيد المراجعة / التحليل</SelectItem>
-                    <SelectItem value="in_discussion">قيد النقاش / الاجتماع</SelectItem>
-                    <SelectItem value="offered">تم تقديم العرض</SelectItem>
-                    <SelectItem value="ongoing">قيد التنفيذ (جاري)</SelectItem>
-                    <SelectItem value="completed">مكتمل / تم التسليم</SelectItem>
-                    <SelectItem value="archived">مؤرشف</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2 flex items-center justify-between border p-4 rounded-xl">
+                <div>
+                  <Label htmlFor="published" className="text-base">نشر المشروع للملأ</Label>
+                  <p className="text-sm text-muted-foreground mt-1">إذا تم إيقافه، سيتم حفظه كمسودة فقط ولن يظهر للزوار</p>
+                </div>
+                <Switch 
+                  id="published" 
+                  checked={formData.is_published}
+                  onCheckedChange={(c) => setFormData({ ...formData, is_published: c })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">وصف المشروع</Label>
@@ -176,7 +186,7 @@ const ProjectFormAdmin = () => {
                   rows={6} 
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="اكتب وصفاً مختصراً للمشروع وتفاصيله والاتفاقات الحالية..." 
+                  placeholder="تحدث بتفصيل عن هذا العمل المميز وما حققه..." 
                 />
               </div>
             </div>
@@ -184,58 +194,29 @@ const ProjectFormAdmin = () => {
         );
       case 3:
         return (
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }} 
-            animate={{ opacity: 1, x: 0 }} 
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
-          >
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="startDate">تاريخ البدء</Label>
+                <Label htmlFor="cover">الصورة الرئيسية (Cover Image)</Label>
                 <Input 
-                  id="startDate" 
-                  type="date" 
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  id="cover" 
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) setCoverFile(e.target.files[0]);
+                  }}
                 />
+                {(formData.cover_image || coverFile) && (
+                  <div className="mt-4 w-full h-48 border rounded-xl overflow-hidden relative">
+                    <img 
+                      src={coverFile ? URL.createObjectURL(coverFile) : formData.cover_image} 
+                      alt="Cover preview" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="budget">الميزانية المتوقعة / المبلغ</Label>
-                <div className="relative">
-                  <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="budget" 
-                    className="pr-10" 
-                    value={formData.budget}
-                    onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                    placeholder="مثال: 5000$" 
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="endDate">تاريخ الانتهاء المتوقع (اختياري)</Label>
-                <Input 
-                  id="endDate" 
-                  type="date" 
-                  value={formData.endDate}
-                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="link">رابط المشروع الخارجي (إن وجد)</Label>
-                <div className="relative">
-                  <ExternalLink className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="link" 
-                    type="url" 
-                    value={formData.link}
-                    onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-                    className="pl-10"
-                    placeholder="https://example.com" 
-                  />
-                </div>
-              </div>
+              {/* Media Gallery feature is pending separate task for component upload, can add later */}
             </div>
           </motion.div>
         );
@@ -249,7 +230,7 @@ const ProjectFormAdmin = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{isEditing ? "تعديل المشروع" : "مشروع جديد"}</h1>
-          <p className="text-muted-foreground mt-1">أكمل الخطوات التالية لإضافة بيانات المشروع بدقة.</p>
+          <p className="text-muted-foreground mt-1">إضافة مشروع إلى مععرض الأعمال الخاص بك.</p>
         </div>
         <Button variant="ghost" asChild>
           <Link to="/admin/projects" className="gap-2">
@@ -258,7 +239,6 @@ const ProjectFormAdmin = () => {
         </Button>
       </div>
 
-      {/* Steps Indicator */}
       <div className="relative flex justify-between items-center px-4">
         <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-secondary -translate-y-1/2" />
         {steps.map((step) => (
@@ -289,7 +269,7 @@ const ProjectFormAdmin = () => {
         <Button 
           variant="outline" 
           onClick={prevStep} 
-          disabled={currentStep === 1}
+          disabled={currentStep === 1 || saveMutation.isPending}
           className="gap-2 rounded-xl"
         >
           <ChevronRight size={18} /> الخطوة السابقة
@@ -297,10 +277,11 @@ const ProjectFormAdmin = () => {
         
         {currentStep === steps.length ? (
           <Button 
-            onClick={handleSave} 
+            onClick={() => saveMutation.mutate()} 
+            disabled={saveMutation.isPending}
             className="bg-gradient-brand gap-2 rounded-xl px-8 shadow-lg shadow-primary/20"
           >
-            حفظ المشروع <Check size={18} />
+            {saveMutation.isPending ? "جاري الحفظ..." : "حفظ المشروع"} <Check size={18} />
           </Button>
         ) : (
           <Button 

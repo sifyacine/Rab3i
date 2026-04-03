@@ -5,9 +5,7 @@ import { motion } from "framer-motion";
 import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { 
-  ExternalLink, Edit, Trash, Eye
-} from "lucide-react";
+import { ExternalLink, Edit, Trash, Eye, Plus } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,122 +17,85 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-
-export type ProjectStatus = "analysis" | "in_discussion" | "offered" | "ongoing" | "completed" | "archived";
-
-export interface Milestone {
-  id: string;
-  title: string;
-  description: string;
-  weight: number; // Percentage
-  status: "pending" | "in_progress" | "completed";
-  client_approval: "pending" | "approved" | "rejected";
-}
-
-export interface Project {
-  id: string;
-  title: string;
-  category: string;
-  client: string;
-  status: ProjectStatus;
-  description: string;
-  image?: string;
-  startDate: string;
-  endDate?: string;
-  budget?: string;
-  link?: string;
-  milestones?: Milestone[];
-}
-
-export const statusMap: Record<ProjectStatus, { label: string, variant: string, className?: string }> = {
-  analysis: { label: "قيد المراجعة / التحليل", variant: "secondary", className: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
-  in_discussion: { label: "قيد النقاش / الاجتماع", variant: "outline", className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
-  offered: { label: "تم تقديم العرض", variant: "outline", className: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20" },
-  ongoing: { label: "قيد التنفيذ", variant: "default", className: "bg-primary text-white" },
-  completed: { label: "مكتمل", variant: "default", className: "bg-emerald-500 text-white" },
-  archived: { label: "مؤرشف", variant: "destructive", className: "bg-red-500/10 text-red-600 border-red-500/20" },
-};
-
-const mockProjects: Project[] = [
-  { 
-    id: "1", 
-    title: "موقع شركة النبراس", 
-    category: "تطوير ويب", 
-    client: "النبراس العقارية", 
-    status: "completed", 
-    description: "تطوير موقع تعريفي متكامل لشركة النبراس العقارية مع لوحة تحكم.",
-    startDate: "2024-03-15",
-    budget: "5000$",
-    link: "https://al-nebras.com"
-  },
-  { 
-    id: "2", 
-    title: "تطبيق ربيعي للمسافرين", 
-    category: "تطبيق جوال", 
-    client: "شركة ربيعي", 
-    status: "ongoing", 
-    description: "تطبيق لمساعدة المسافرين في العثور على أفضل الوجهات والخدمات في المملكة.",
-    startDate: "2024-05-20",
-    budget: "12000$"
-  },
-  { 
-    id: "3", 
-    title: "هوية بصرية لستوديو فنون", 
-    category: "تصميم جرافيك", 
-    client: "ستوديو فنون", 
-    status: "archived", 
-    description: "تصميم شعار وهوية بصرية كاملة لستوديو فنون المتخصص في التصوير.",
-    startDate: "2023-11-10"
-  },
-];
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { projectsService } from "@/services/projectsService";
+import { Project } from "@/types/portfolio";
+import { Button } from "@/components/ui/button";
 
 const Projects = () => {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<Project[]>(mockProjects);
+  const queryClient = useQueryClient();
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+
+  const { data: projectsData, isLoading } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => projectsService.getProjects(),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: projectsService.deleteProject,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("تم حذف المشروع بنجاح");
+      setProjectToDelete(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "حدث خطأ أثناء الحذف");
+    }
+  });
 
   const confirmDelete = () => {
     if (projectToDelete) {
-      setProjects(projects.filter(p => p.id !== projectToDelete));
-      toast.success("تم حذف المشروع بنجاح");
-      setProjectToDelete(null);
+      deleteMutation.mutate(projectToDelete);
     }
   };
 
-  const columns = [
+  const columns: any[] = [
     { header: "المشروع", accessorKey: "title" as const },
-    { header: "الفئة", accessorKey: "category" as const },
-    { header: "العميل", accessorKey: "client" as const },
-    {
-      header: "الحالة",
-      accessorKey: "status" as const,
-      cell: (item: Project) => (
-        <Badge
-          variant={statusMap[item.status].variant as any}
-          className={cn("font-medium", statusMap[item.status].className)}
-        >
-          {statusMap[item.status].label}
-        </Badge>
-      ),
+    { 
+      header: "الفئة", 
+      accessorKey: "category",
+      cell: (item: Project) => item.category?.name || "بدون فئة" 
     },
-    { header: "التاريخ", accessorKey: "startDate" as const },
+    { 
+      header: "الحالة", 
+      accessorKey: "is_published",
+      cell: (item: Project) => (
+        <Badge variant={item.is_published ? "default" : "secondary"}>
+          {item.is_published ? "منشور" : "مسودة"}
+        </Badge>
+      )
+    },
+    { 
+      header: "تاريخ الإنشاء", 
+      accessorKey: "created_at",
+      cell: (item: Project) => new Date(item.created_at).toLocaleDateString('ar-SA')
+    },
+    { header: "المشاهدات", accessorKey: "views" as const },
   ];
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">إدارة المشاريع</h1>
+        <h1 className="text-2xl font-bold">إدارة المشاريع (Portfolio)</h1>
       </div>
 
       <SmartDataTable
-        data={projects}
+        data={projectsData?.data || []}
         columns={columns}
-        cardTitle={(p) => p.title}
-        cardSubtitle={(p) => p.category}
+        cardTitle={(p: Project) => p.title}
+        cardSubtitle={(p: Project) => p.category?.name || "بدون فئة"}
         onAdd={() => navigate("/admin/projects/new")}
-        onRowClick={(p) => navigate(`/admin/projects/${p.id}`)}
-        actions={(item) => (
+        onRowClick={(p: Project) => navigate(`/admin/projects/${p.id}`)}
+        actions={(item: Project) => (
           <>
+            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/portfolio/${item.slug}`);
+            }}>
+              <ExternalLink className="h-4 w-4" />
+              عرض كزائر
+            </DropdownMenuItem>
             <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => {
               e.stopPropagation();
               navigate(`/admin/projects/${item.id}`);
