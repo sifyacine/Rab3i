@@ -56,11 +56,15 @@ function ServiceCard({ service, index }: { service: Service; index: number }) {
 }
 
 const ServicesSection = () => {
-  const { data: services = [], isLoading } = useQuery({
+  const { data: services = [], isLoading, error } = useQuery({
     queryKey: ["home-services"],
     queryFn: () => servicesService.getServices(true),
     select: (data) => data.slice(0, 6), // Show first 6 on homepage
   });
+
+  if (error) {
+    console.error("Failed to load services:", error);
+  }
 
   return (
     <section className="relative py-32" dir="rtl">

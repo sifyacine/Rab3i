@@ -70,12 +70,16 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
 }
 
 const FeaturedWorkSection = () => {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["featured-projects"],
     queryFn: () => projectsService.getProjects({ publishedOnly: true, limit: 4 }),
   });
 
   const projects: Project[] = data?.data ?? [];
+
+  if (error) {
+    console.error("Failed to load projects:", error);
+  }
 
   return (
     <section className="py-32" dir="rtl">
