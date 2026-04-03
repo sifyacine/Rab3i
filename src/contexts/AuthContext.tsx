@@ -44,19 +44,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initAuth();
 
-    // Listen for auth changes
+    // Listen for auth changes (including INITIAL_SESSION so refresh works reliably)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth event:", event);
-      // Skip INITIAL_SESSION as it's handled by getSession to avoid race conditions
-      if (event === "INITIAL_SESSION") return;
-      
+
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
-        setLoading(true); // Ensure loading is true while we fetch role after an event
+        // When we have a user (signed in or initial session), ensure role is resolved
+        setLoading(true);
         await fetchUserRole(session.user.id);
       } else {
+        // No session: fully reset auth state
         setRole(null);
         setLoading(false);
       }
@@ -102,8 +102,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     try {
       if (supabase) {
-        // Sign out from Supabase (clears auth session across tabs)
-        await supabase.auth.signOut({ scope: "global" });
+        // Sign out from Supabase and clear persisted session
+        await supabase.auth.signOut();
       }
     } finally {
       // Ensure local auth state is fully cleared immediately
