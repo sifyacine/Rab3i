@@ -11,6 +11,7 @@ import {
   SidebarFooter, SidebarTrigger, useSidebar,
 } from "@/components/ui/sidebar";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const menuItems = [
   { title: "لوحة القيادة", icon: LayoutDashboard, url: "/admin" },
@@ -29,10 +30,11 @@ function AdminSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const navigate = useNavigate();
+  const { signOut } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem("rabii_mock_auth");
-    toast.success("تم تسجيل الخروج");
+  const handleLogout = async () => {
+    await signOut();
+    toast.success("تم تسجيل الخروج بنجاح");
     navigate("/login");
   };
 
@@ -106,12 +108,7 @@ function AdminHeader() {
 const AdminDashboard = () => {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const auth = localStorage.getItem("rabii_mock_auth");
-    if (!auth) {
-      navigate("/login");
-    }
-  }, [navigate]);
+  // Route protection is handled by ProtectedRoute component
 
   return (
     <SidebarProvider>

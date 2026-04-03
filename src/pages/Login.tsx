@@ -32,7 +32,20 @@ const Login = () => {
       });
 
       if (error) {
-        toast.error(error.message || "خطأ في تسجيل الدخول");
+        let errorMsg = "خطأ في تسجيل الدخول";
+        const msg = error.message.toLowerCase();
+        
+        if (msg.includes("invalid login credentials")) {
+          errorMsg = "البريد الإلكتروني أو كلمة المرور غير صحيحة";
+        } else if (msg.includes("email not confirmed")) {
+          errorMsg = "يرجى تأكيد البريد الإلكتروني الخاص بك";
+        } else if (msg.includes("rate limit")) {
+          errorMsg = "لقد تجاوزت الحد المسموح به من المحاولات، يرجى المحاولة لاحقاً";
+        } else {
+          errorMsg = error.message;
+        }
+        
+        toast.error(errorMsg);
         throw error;
       }
 

@@ -24,9 +24,19 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   }
 
   // Handle role-based access
-  if (requiredRole && role !== requiredRole) {
-    // If an authenticated user tries to access a role they don't have, redirect to forbidden
-    return <Navigate to="/403" replace />;
+  if (requiredRole) {
+    if (role === null) {
+      // Role is still being fetched after auth, show spinner instead of kicking to 403
+      return (
+        <div className="flex justify-center items-center h-screen">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      );
+    }
+    
+    if (role !== requiredRole) {
+      return <Navigate to="/403" replace />;
+    }
   }
 
   return <>{children}</>;

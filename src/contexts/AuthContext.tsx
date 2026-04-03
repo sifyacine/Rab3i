@@ -63,13 +63,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error("Error fetching user role:", error);
-        setRole(null);
+        setRole("client"); // Default to client if profile is missing/errors
       } else {
-        setRole(data?.role as UserRole);
+        setRole(data?.role as UserRole || "client");
       }
     } catch (err) {
       console.error("Unexpected error fetching role:", err);
-      setRole(null);
+      setRole("client");
     } finally {
       setLoading(false);
     }

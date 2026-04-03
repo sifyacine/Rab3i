@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const menuItems = [
   { title: "الرئيسية", icon: LayoutDashboard, url: "/portal" },
@@ -24,9 +25,10 @@ function PortalSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const navigate = useNavigate();
+  const { signOut } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem("rabii_portal_auth");
+  const handleLogout = async () => {
+    await signOut();
     toast.success("تم تسجيل الخروج من بوابة العملاء");
     navigate("/login");
   };
