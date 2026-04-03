@@ -14,6 +14,11 @@ export interface Service {
   description_ar: string | null;
   description_en: string | null;
   icon: string | null;
+  image_url: string | null;
+  price_from: string | null;
+  price_note_ar: string | null;
+  price_note_en: string | null;
+  sort_order: number;
   is_active: boolean;
   created_at: string;
 }
@@ -69,6 +74,11 @@ export interface CreateServiceDTO {
   description_ar?: string;
   description_en?: string;
   icon?: string;
+  image_url?: string;
+  price_from?: string;
+  price_note_ar?: string;
+  price_note_en?: string;
+  sort_order?: number;
   is_active?: boolean;
 }
 

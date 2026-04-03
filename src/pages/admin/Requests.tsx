@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { CheckCircle, Clock, Trash, Eye } from "lucide-react";
+import { CheckCircle, Clock, Trash, Eye, Loader2, UserPlus } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,104 +17,163 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { requestsService, GuestRequest, RequestStatus } from "@/services/requestsService";
 
-interface Request {
-  id: string;
-  sender: string;
-  type: string;
-  status: "analysis" | "replied" | "closed";
-  date: string;
-}
-
-const mockRequests: Request[] = [
-  { id: "1", sender: "شركة المعالي", type: "مشروع جديد", status: "analysis", date: "2024-03-21" },
-  { id: "2", sender: "محمد الحسن", type: "استفسار", status: "replied", date: "2024-03-20" },
-  { id: "3", sender: "آمال عبدالله", type: "تطوير تطبيق", status: "analysis", date: "2024-03-19" },
-];
+const statusConfig: Record<RequestStatus, { label: string; className: string }> = {
+  new:       { label: "جديد", className: "bg-blue-500/15 text-blue-600 border-blue-500/30" },
+  analysis:  { label: "قيد المراجعة", className: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
+  replied:   { label: "تم الرد", className: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" },
+  converted: { label: "تحوّل لمشروع", className: "bg-primary/15 text-primary border-primary/30" },
+  closed:    { label: "مغلق", className: "bg-muted text-muted-foreground border-border" },
+};
 
 const Requests = () => {
   const navigate = useNavigate();
-  const [requests, setRequests] = useState<Request[]>(mockRequests);
+  const queryClient = useQueryClient();
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
 
-  const confirmDelete = () => {
-    if (requestToDelete) {
-      setRequests(requests.filter(r => r.id !== requestToDelete));
-      toast.success("تم حذف الطلب بنجاح");
+  const { data: requests = [], isLoading } = useQuery({
+    queryKey: ["admin-requests"],
+    queryFn: () => requestsService.getRequests(),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => requestsService.deleteRequest(id),
+    onSuccess: () => {
+      toast.success("تم حذف الطلب");
+      queryClient.invalidateQueries({ queryKey: ["admin-requests"] });
       setRequestToDelete(null);
-    }
-  };
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحذف"),
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: RequestStatus }) =>
+      requestsService.updateRequest(id, { status }),
+    onSuccess: () => {
+      toast.success("تم تحديث الحالة");
+      queryClient.invalidateQueries({ queryKey: ["admin-requests"] });
+    },
+  });
 
   const columns = [
-    { header: "المرسل", accessorKey: "sender" as const },
-    { header: "نوع الطلب", accessorKey: "type" as const },
+    {
+      header: "المرسل",
+      accessorKey: "guest_name" as const,
+      cell: (item: GuestRequest) => (
+        <div>
+          <p className="font-medium">{item.guest_name}</p>
+          <p className="text-xs text-muted-foreground" dir="ltr">{item.guest_email}</p>
+          {item.guest_phone && <p className="text-xs text-muted-foreground" dir="ltr">{item.guest_phone}</p>}
+        </div>
+      ),
+    },
+    { header: "نوع المشروع", accessorKey: "project_type" as const },
     {
       header: "الحالة",
       accessorKey: "status" as const,
-      cell: (item: Request) => (
-        <Badge
-          variant={
-            item.status === "analysis" ? "default" :
-            item.status === "replied" ? "secondary" : "destructive"
-          }
-          className={cn(
-            "font-medium",
-            item.status === "analysis" ? "bg-blue-500 text-white" :
-            item.status === "replied" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : 
-            "bg-slate-500/10 text-slate-600 border-slate-500/20"
-          )}
-        >
-          {item.status === "analysis" ? "جديد (تحليل)" :
-           item.status === "replied" ? "تم الرد" : "مغلق"}
-        </Badge>
+      cell: (item: GuestRequest) => {
+        const cfg = statusConfig[item.status];
+        return (
+          <Badge variant="outline" className={cn("font-medium text-xs", cfg.className)}>
+            {cfg.label}
+          </Badge>
+        );
+      },
+    },
+    {
+      header: "حساب مرتبط",
+      accessorKey: "user_id" as const,
+      cell: (item: GuestRequest) => (
+        <span className={cn("text-xs", item.user_id ? "text-emerald-600" : "text-muted-foreground")}>
+          {item.user_id ? "✓ نعم" : "ضيف"}
+        </span>
       ),
     },
-    { header: "التاريخ", accessorKey: "date" as const },
+    {
+      header: "التاريخ",
+      accessorKey: "created_at" as const,
+      cell: (item: GuestRequest) => (
+        <span className="text-xs text-muted-foreground">
+          {new Date(item.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" })}
+        </span>
+      ),
+    },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <h1 className="text-2xl font-bold">إدارة الطلبات</h1>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">إدارة الطلبات</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {requests.length} طلب إجمالاً — {requests.filter(r => r.status === "new").length} جديد
+          </p>
+        </div>
+      </div>
+
       <SmartDataTable
         data={requests}
         columns={columns}
-        cardTitle={(r) => r.sender}
-        cardSubtitle={(r) => r.type}
+        cardTitle={(r) => r.guest_name}
+        cardSubtitle={(r) => r.project_type}
         onRowClick={(r) => navigate(`/admin/requests/${r.id}`)}
-        actions={(item) => (
+        actions={(item: GuestRequest) => (
           <>
             <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => {
               e.stopPropagation();
               navigate(`/admin/requests/${item.id}`);
             }}>
-              <Eye className="h-4 w-4" />
-              عرض التفاصيل
+              <Eye className="h-4 w-4" /> عرض التفاصيل
             </DropdownMenuItem>
+
             <DropdownMenuItem className="gap-2 cursor-pointer text-primary focus:text-primary" onClick={(e) => {
               e.stopPropagation();
-              toast.info("جاري التحويل لإنشاء مشروع بناءً على بيانات الطلب...");
+              updateStatusMutation.mutate({ id: item.id, status: "analysis" });
               navigate("/admin/projects/new", { state: { request: item } });
             }}>
-              <CheckCircle className="h-4 w-4" />
-              الموافقة وبدء مشروع
+              <CheckCircle className="h-4 w-4" /> الموافقة وبدء مشروع
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-              <CheckCircle className="h-4 w-4" />
-              تحديد كـ "تم الرد"
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-              <Clock className="h-4 w-4" />
-              أرشفة
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              className="gap-2 cursor-pointer text-destructive focus:text-destructive" 
-              onClick={(e) => {
+
+            {item.status === "new" && (
+              <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => {
                 e.stopPropagation();
-                setRequestToDelete(item.id);
-              }}
+                updateStatusMutation.mutate({ id: item.id, status: "replied" });
+              }}>
+                <CheckCircle className="h-4 w-4" /> تحديد كـ "تم الرد"
+              </DropdownMenuItem>
+            )}
+
+            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => {
+              e.stopPropagation();
+              updateStatusMutation.mutate({ id: item.id, status: "closed" });
+            }}>
+              <Clock className="h-4 w-4" /> إغلاق الطلب
+            </DropdownMenuItem>
+
+            {!item.user_id && (
+              <DropdownMenuItem className="gap-2 cursor-pointer text-blue-600 focus:text-blue-600" onClick={(e) => {
+                e.stopPropagation();
+                toast.info(`سيُربط تلقائياً عند تسجيل ${item.guest_email} كحساب`);
+              }}>
+                <UserPlus className="h-4 w-4" /> إرسال دعوة إنشاء حساب
+              </DropdownMenuItem>
+            )}
+
+            <DropdownMenuItem
+              className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+              onClick={(e) => { e.stopPropagation(); setRequestToDelete(item.id); }}
             >
-              <Trash className="h-4 w-4" />
-              حذف
+              <Trash className="h-4 w-4" /> حذف
             </DropdownMenuItem>
           </>
         )}
@@ -130,7 +189,10 @@ const Requests = () => {
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:justify-start">
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={() => requestToDelete && deleteMutation.mutate(requestToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               تأكيد الحذف
             </AlertDialogAction>
           </AlertDialogFooter>

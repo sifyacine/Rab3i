@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Info, Tag, Layers, ChevronRight, ChevronLeft, Loader2 } from "lucide-react";
+import { Check, Info, Tag, Layers, ChevronRight, ChevronLeft, Loader2, DollarSign, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,8 +14,8 @@ import { CreateServiceDTO } from "@/types/portfolio";
 
 const steps = [
   { id: 1, title: "الاسم والمعرّف", icon: Tag },
-  { id: 2, title: "الوصف", icon: Info },
-  { id: 3, title: "الإعدادات", icon: Layers },
+  { id: 2, title: "الوصف والسعر", icon: DollarSign },
+  { id: 3, title: "الصورة والإعدادات", icon: Layers },
 ];
 
 const iconOptions = [
@@ -45,6 +45,10 @@ const ServiceFormAdmin = () => {
     description_ar: "",
     description_en: "",
     icon: "Zap",
+    image_url: "",
+    price_from: "",
+    price_note_ar: "تبدأ من",
+    price_note_en: "Starting from",
     is_active: true,
   });
 
@@ -63,6 +67,10 @@ const ServiceFormAdmin = () => {
         description_ar: existingService.description_ar ?? "",
         description_en: existingService.description_en ?? "",
         icon: existingService.icon ?? "Zap",
+        image_url: existingService.image_url ?? "",
+        price_from: existingService.price_from ?? "",
+        price_note_ar: existingService.price_note_ar ?? "تبدأ من",
+        price_note_en: existingService.price_note_en ?? "Starting from",
         is_active: existingService.is_active,
       });
     }
@@ -201,11 +209,68 @@ const ServiceFormAdmin = () => {
                 dir="ltr"
               />
             </div>
+            {/* Pricing */}
+            <div className="rounded-xl border border-border/50 p-4 space-y-4 bg-secondary/20">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-primary" />
+                <span className="font-medium text-sm">التسعير (اختياري)</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="price_from">السعر / Price</Label>
+                  <Input
+                    id="price_from"
+                    value={form.price_from ?? ""}
+                    onChange={e => setForm(f => ({ ...f, price_from: e.target.value }))}
+                    placeholder="e.g. 500$"
+                    dir="ltr"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="price_note_ar">ملاحظة السعر (عربي)</Label>
+                  <Input
+                    id="price_note_ar"
+                    value={form.price_note_ar ?? ""}
+                    onChange={e => setForm(f => ({ ...f, price_note_ar: e.target.value }))}
+                    placeholder="تبدأ من / حسب الطلب"
+                    dir="rtl"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="price_note_en">Price note (English)</Label>
+                <Input
+                  id="price_note_en"
+                  value={form.price_note_en ?? ""}
+                  onChange={e => setForm(f => ({ ...f, price_note_en: e.target.value }))}
+                  placeholder="Starting from / Custom pricing"
+                  dir="ltr"
+                />
+              </div>
+            </div>
           </motion.div>
         );
       case 3:
         return (
           <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+            {/* Image URL */}
+            <div className="space-y-2">
+              <Label htmlFor="image_url">صورة الخدمة (URL)</Label>
+              <Input
+                id="image_url"
+                value={form.image_url ?? ""}
+                onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))}
+                placeholder="https://images.unsplash.com/..."
+                dir="ltr"
+              />
+              {form.image_url && (
+                <div className="mt-2 h-40 w-full overflow-hidden rounded-xl border border-border/50">
+                  <img src={form.image_url} alt="preview" className="h-full w-full object-cover" />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">أضف رابط صورة مميزة للخدمة لعرضها في صفحة الخدمات</p>
+            </div>
+
             <div className="flex items-center justify-between p-5 rounded-xl border border-border/50 bg-secondary/20">
               <div>
                 <p className="font-medium">تفعيل الخدمة</p>
