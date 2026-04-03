@@ -55,6 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchUserRole = async (userId: string) => {
     if (!supabase) return;
     try {
+      // First try to get from profiles table
       const { data, error } = await supabase
         .from("profiles")
         .select("role")
@@ -62,8 +63,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) {
-        console.error("Error fetching user role:", error);
-        setRole("client"); // Default to client if profile is missing/errors
+        console.warn("Could not fetch profile, checking user metadata:", error);
+        // Fallback: Check metadata directly from session
+        const { data: { session } } = await supabase.auth.getSession();
+        const metadataRole = session?.user?.user_metadata?.role as UserRole;
+        
+        if (metadataRole) {
+          console.log("Found role in metadata:", metadataRole);
+          setRole(metadataRole);
+        } else {
+          // Final fallback
+          setRole("client");
+        }
       } else {
         setRole(data?.role as UserRole || "client");
       }

@@ -106,5 +106,30 @@ export const projectsService = {
   async incrementViews(id: string) {
     const { error } = await supabase.rpc('increment_project_views', { project_id: id });
     if (error) throw error;
+  },
+
+  async getProjectStats() {
+    const { count: projectsCount, error: projectsError } = await supabase
+      .from('projects')
+      .select('*', { count: 'estimated', head: true });
+
+    const { count: newRequestsCount, error: requestsError } = await supabase
+      .from('requests')
+      .select('*', { count: 'estimated', head: true })
+      .eq('status', 'new');
+
+    const { count: totalRequestsCount, error: totalRequestsError } = await supabase
+      .from('requests')
+      .select('*', { count: 'estimated', head: true });
+
+    if (projectsError || requestsError || totalRequestsError) {
+      console.error('Stats fetch error:', projectsError || requestsError || totalRequestsError);
+    }
+
+    return {
+      projects: projectsCount || 0,
+      newRequests: newRequestsCount || 0,
+      totalRequests: totalRequestsCount || 0,
+    };
   }
 };

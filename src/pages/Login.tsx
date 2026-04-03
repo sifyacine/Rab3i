@@ -57,7 +57,14 @@ const Login = () => {
           .eq("id", data.user.id)
           .single();
 
-        const role = profile?.role || "client";
+        let role = profile?.role;
+        
+        // Fallback to metadata if profile is not found
+        if (!role && data.user.user_metadata?.role) {
+          role = data.user.user_metadata.role;
+        }
+        
+        role = role || "client";
         toast.success("تم تسجيل الدخول بنجاح");
         
         // Redirect logic

@@ -11,7 +11,7 @@ export interface GuestRequest {
   project_type: string;
   budget: string | null;
   details: string;
-  service_ids: string[];
+  service_ids: string[] | null;  // jsonb array, may be null
   status: RequestStatus;
   admin_notes: string | null;
   project_id: string | null;
@@ -32,13 +32,24 @@ export interface CreateRequestDTO {
 export const requestsService = {
   // Public: submit a request (no auth required)
   async submitRequest(data: CreateRequestDTO): Promise<GuestRequest> {
+    // Build payload — omit undefined fields so PostgREST doesn't include them in columns list
+    const payload: Record<string, unknown> = {
+      guest_name: data.guest_name,
+      guest_email: data.guest_email,
+      details: data.details,
+      project_type: data.project_type,
+      service_ids: data.service_ids ?? [],   // jsonb column — always an array
+    };
+    if (data.guest_phone) payload.guest_phone = data.guest_phone;
+    if (data.budget) payload.budget = data.budget;
+
     const { data: result, error } = await supabase
       .from('requests')
-      .insert([data])
+      .insert([payload])
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return result as GuestRequest;
   },
 
@@ -102,6 +113,18 @@ export const requestsService = {
       .from('requests')
       .select('*')
       .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data as GuestRequest[];
+  },
+
+  // Admin: get most recent requests for dashboard
+  async getRecentRequests(limit: number = 5): Promise<GuestRequest[]> {
+    const { data, error } = await supabase
+      .from('requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
     if (error) throw error;
     return data as GuestRequest[];

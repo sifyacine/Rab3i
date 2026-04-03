@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Check, Info, Briefcase, ChevronRight, ChevronLeft, Image as ImageIcon,
@@ -24,6 +24,8 @@ import { projectsService } from "@/services/projectsService";
 import { categoryService } from "@/services/categoryService";
 import { mediaService } from "@/services/mediaService";
 import { servicesService } from "@/services/servicesService";
+import { GuestRequest } from "@/services/requestsService";
+import { requestsService } from "@/services/requestsService";
 
 const steps = [
   { id: 1, title: "المعلومات الأساسية", icon: Briefcase },
@@ -35,18 +37,22 @@ const steps = [
 const ProjectFormAdmin = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const isEditing = !!id;
+  
+  // Source request when converting a guest request → project
+  const sourceRequest = location.state?.request as GuestRequest | undefined;
   
   const [currentStep, setCurrentStep] = useState(1);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
-    title: "",
+    title: sourceRequest ? `${sourceRequest.project_type} – ${sourceRequest.guest_name}` : "",
     slug: "",
     category_id: "",
-    description: "",
+    description: sourceRequest?.details ?? "",
     is_published: false,
     cover_image: "",
   });
@@ -110,12 +116,23 @@ const ProjectFormAdmin = () => {
         if (project && selectedServiceIds.length) {
           await servicesService.setProjectServices(project.id, selectedServiceIds);
         }
+        // If this project was created from a guest request, link them
+        if (project && sourceRequest?.id) {
+          await requestsService.updateRequest(sourceRequest.id, {
+            status: "converted",
+            project_id: project.id,
+          });
+        }
       }
       return project;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-requests"] });
       toast.success(isEditing ? "تم تحديث المشروع بنجاح" : "تم إضافة المشروع بنجاح");
+      if (sourceRequest) {
+        toast.success(`تم تحويل طلب ${sourceRequest.guest_name} إلى مشروع ✓`);
+      }
       navigate("/admin/projects");
     },
     onError: (err: Error) => {
@@ -321,11 +338,27 @@ const ProjectFormAdmin = () => {
     <div className="max-w-3xl mx-auto space-y-8" dir="rtl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{isEditing ? "تعديل المشروع" : "مشروع جديد"}</h1>
+          <h1 className="text-2xl font-bold">{isEditing ? "تعديل المشروع" : sourceRequest ? "تحويل طلب إلى مشروع" : "مشروع جديد"}</h1>
           <p className="text-muted-foreground mt-1 text-sm">أضف مشروعاً إلى معرض أعمالك على طريقة Behance.</p>
         </div>
         <Button variant="ghost" asChild><Link to="/admin/projects">إلغاء</Link></Button>
       </div>
+
+      {/* Source request banner */}
+      {sourceRequest && (
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/8 p-4 flex items-start gap-3">
+          <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
+            <Zap className="h-4 w-4 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-blue-700">تحويل من طلب عميل</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              طلب <span className="font-semibold">{sourceRequest.guest_name}</span> ({sourceRequest.guest_email}) — {sourceRequest.project_type}
+            </p>
+            <p className="text-xs text-muted-foreground">تم تعبئة العنوان والوصف مسبقاً من بيانات الطلب. يمكنك تعديلها.</p>
+          </div>
+        </div>
+      )}
 
       {/* Step indicator */}
       <div className="relative flex justify-between items-center px-2">
