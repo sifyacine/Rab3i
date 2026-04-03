@@ -1,225 +1,277 @@
-import { useState, useRef } from "react";
-import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
+import { Eye, Calendar, Loader2, Filter, X } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import ScrollReveal from "@/components/ScrollReveal";
-import { useCursorFollow, useCardTilt } from "@/hooks/use-cursor-follow";
-import { useQuery } from "@tanstack/react-query";
 import { projectsService } from "@/services/projectsService";
 import { categoryService } from "@/services/categoryService";
-import { Project } from "@/types/portfolio";
-import { Loader2 } from "lucide-react";
+import { servicesService } from "@/services/servicesService";
+import { Project, Category, Service } from "@/types/portfolio";
 
-const ProjectCard = ({ project, index }: { project: Project; index: number }) => {
-  const { pos, onMouseMove, onMouseLeave } = useCursorFollow();
-  const { transform, onMouseMove: onTiltMove, onMouseLeave: onTiltLeave } = useCardTilt();
+const Portfolio = () => {
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [showServiceFilter, setShowServiceFilter] = useState(false);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    onMouseMove(e);
-    onTiltMove(e);
+  const { data: projectsResult, isLoading: loadingProjects } = useQuery({
+    queryKey: ["portfolio-projects"],
+    queryFn: () => projectsService.getProjects({ publishedOnly: true }),
+  });
+
+  const { data: categories = [] }: { data: Category[] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => categoryService.getCategories(),
+  });
+
+  const { data: services = [] }: { data: Service[] } = useQuery({
+    queryKey: ["services-active"],
+    queryFn: () => servicesService.getServices(true),
+  });
+
+  const allProjects: Project[] = projectsResult?.data ?? [];
+
+  const toggleService = (id: string) => {
+    setSelectedServices(prev =>
+      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+    );
   };
 
-  const handleMouseLeave = () => {
-    onMouseLeave();
-    onTiltLeave();
+  const clearFilters = () => {
+    setSelectedCategory(null);
+    setSelectedServices([]);
   };
 
-  // Generate size based on index for masonry effect
-  const isTall = index % 5 === 0;
-  const isWide = index % 7 === 0 && !isTall;
+  const filtered = allProjects.filter(p => {
+    const catMatch = !selectedCategory || p.category_id === selectedCategory;
+    const svcMatch =
+      selectedServices.length === 0 ||
+      selectedServices.every(sid =>
+        p.services?.some(s => s.id === sid)
+      );
+    return catMatch && svcMatch;
+  });
 
-  // Generate a fallback gradient based on id
-  const fallbackColor = "from-[hsl(0,84%,20%)] to-[hsl(350,70%,10%)]";
+  const hasActiveFilter = selectedCategory || selectedServices.length > 0;
 
+  return (
+    <div className="min-h-screen bg-background" dir="rtl">
+      <Navbar />
+
+      {/* Hero */}
+      <section className="relative pt-28 pb-16 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
+        <div className="container relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center max-w-2xl mx-auto"
+          >
+            <span className="inline-block rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary mb-4">معرض الأعمال</span>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
+              أعمالنا الإبداعية
+            </h1>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              استعرض مجموعة مختارة من مشاريعنا المميزة عبر مختلف التخصصات والصناعات
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Filters */}
+      <section className="sticky top-16 z-30 bg-background/80 backdrop-blur-xl border-b border-border/40 shadow-sm">
+        <div className="container py-3 space-y-3">
+          {/* Category row */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
+                !selectedCategory
+                  ? "bg-primary text-white shadow-md shadow-primary/20"
+                  : "bg-secondary text-foreground hover:bg-secondary/70"
+              }`}
+            >
+              الكل
+            </button>
+            {categories.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id === selectedCategory ? null : cat.id)}
+                className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
+                  selectedCategory === cat.id
+                    ? "bg-primary text-white shadow-md shadow-primary/20"
+                    : "bg-secondary text-foreground hover:bg-secondary/70"
+                }`}
+              >
+                {cat.title_ar || cat.name}
+                <span className="ms-1 text-xs opacity-60">{cat.title_en}</span>
+              </button>
+            ))}
+
+            {/* Services filter toggle */}
+            <button
+              onClick={() => setShowServiceFilter(v => !v)}
+              className={`ms-auto whitespace-nowrap flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium border transition-all ${
+                selectedServices.length > 0
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border hover:border-primary/40"
+              }`}
+            >
+              <Filter className="h-3.5 w-3.5" />
+              الخدمات {selectedServices.length > 0 && `(${selectedServices.length})`}
+            </button>
+
+            {/* Clear filters */}
+            {hasActiveFilter && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <X className="h-3.5 w-3.5" /> مسح
+              </button>
+            )}
+          </div>
+
+          {/* Services sub-filter */}
+          <AnimatePresence>
+            {showServiceFilter && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="flex flex-wrap gap-2 pt-1 pb-2">
+                  {services.map(svc => (
+                    <button
+                      key={svc.id}
+                      onClick={() => toggleService(svc.id)}
+                      className={`whitespace-nowrap rounded-lg px-3 py-1 text-xs font-medium border transition-all ${
+                        selectedServices.includes(svc.id)
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-secondary hover:border-primary/40"
+                      }`}
+                    >
+                      {svc.title_ar}
+                      <span className="ms-1 opacity-50">{svc.title_en}</span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </section>
+
+      {/* Projects Grid */}
+      <section className="container py-12">
+        {loadingProjects ? (
+          <div className="flex h-64 items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center h-64 gap-3 text-center"
+          >
+            <div className="text-4xl">🎨</div>
+            <p className="text-xl font-semibold">لا توجد مشاريع بهذا الفلتر</p>
+            <p className="text-muted-foreground">جرب تغيير الفئة أو إزالة بعض الفلاتر</p>
+            <button onClick={clearFilters} className="text-primary text-sm hover:underline">مسح الفلاتر</button>
+          </motion.div>
+        ) : (
+          <motion.div
+            layout
+            className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5"
+          >
+            <AnimatePresence>
+              {filtered.map((project, i) => (
+                <ProjectCard key={project.id} project={project} index={i} />
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </section>
+
+      <Footer />
+    </div>
+  );
+};
+
+function ProjectCard({ project, index }: { project: Project; index: number }) {
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.9, y: 30 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9, y: 30 }}
-      transition={{ duration: 0.5, delay: index * 0.06, ease: [0.16, 1, 0.3, 1] }}
-      className={`${isTall ? "row-span-2" : ""} ${isWide ? "sm:col-span-2" : ""}`}
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.4, delay: index * 0.06 }}
+      className="break-inside-avoid"
     >
-      <Link to={`/portfolio/${project.slug}`}>
-        <div
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          className="group relative overflow-hidden rounded-2xl transition-[transform,box-shadow] duration-500 ease-out will-change-transform bg-secondary"
-          style={{
-            transform,
-            aspectRatio: isTall ? "3/5" : isWide ? "2/1" : "4/3",
-          }}
-        >
-          {/* Cover image or gradient bg */}
-          {project.cover_image ? (
-            <div 
-              className="absolute inset-0 transition-transform duration-700 group-hover:scale-110" 
-              style={{
-                backgroundImage: `url(${project.cover_image})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
-            />
-          ) : (
-            <div className={`absolute inset-0 bg-gradient-to-br ${fallbackColor} transition-transform duration-700 group-hover:scale-110`} />
-          )}
-
-          {/* Dark Overlay for text readability */}
-          <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all duration-500" />
-
-          {/* Cursor spotlight */}
-          {pos.isInside && (
-            <div
-              className="pointer-events-none absolute z-10 h-64 w-64 rounded-full transition-opacity duration-300 mix-blend-overlay"
-              style={{
-                background: "radial-gradient(circle, hsla(0,0%,100%,0.2) 0%, transparent 70%)",
-                left: pos.x - 128,
-                top: pos.y - 128,
-              }}
-            />
-          )}
-
-          {/* Scan line effect on hover */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/[0.05] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-            style={{
-              transform: pos.isInside ? `translateY(${pos.y - 100}px)` : "translateY(-100%)",
-              height: "200px",
-            }}
-          />
-
-          {/* Content overlay */}
-          <div className="absolute inset-0 flex flex-col justify-end p-8 z-20">
-            <div className="translate-y-6 opacity-0 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:opacity-100">
-              {project.category && (
-                <span className="mb-2 inline-block rounded-full bg-white/20 px-3 py-1 text-xs backdrop-blur-sm text-white/90 shadow-sm border border-white/10">
-                  {project.category.name}
-                </span>
-              )}
+      <Link to={`/portfolio/${project.slug}`} className="group block">
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-sm hover:shadow-xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-1">
+          {/* Cover */}
+          <div className="relative overflow-hidden bg-secondary/40" style={{ minHeight: 200 }}>
+            {project.cover_image ? (
+              <img
+                src={project.cover_image}
+                alt={project.title}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                loading="lazy"
+              />
+            ) : (
+              <div className="flex h-48 items-center justify-center text-muted-foreground">
+                <span className="text-4xl">🎨</span>
+              </div>
+            )}
+            {/* Hover overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+              <div className="flex items-center gap-2 text-white text-sm">
+                <Eye className="h-4 w-4" />
+                <span>{project.views ?? 0} مشاهدة</span>
+              </div>
             </div>
-            <h3 className="text-xl font-bold text-white transition-all duration-500 group-hover:-translate-y-1 drop-shadow-md">
+          </div>
+
+          {/* Info */}
+          <div className="p-4 space-y-2">
+            <h3 className="font-bold text-base leading-snug group-hover:text-primary transition-colors line-clamp-2">
               {project.title}
             </h3>
-            <div className="mt-3 h-0.5 w-0 rounded-full bg-primary transition-all duration-700 group-hover:w-16" />
+
+            {/* Category badge */}
+            {project.category && (
+              <span className="inline-block text-xs rounded-full bg-primary/10 text-primary px-2.5 py-0.5 font-medium">
+                {project.category.title_ar || project.category.name}
+              </span>
+            )}
+
+            {/* Services tags */}
+            {project.services && project.services.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {project.services.slice(0, 4).map(svc => (
+                  <span key={svc.id} className="text-xs rounded-md bg-secondary px-2 py-0.5 text-muted-foreground">
+                    {svc.title_ar}
+                  </span>
+                ))}
+                {project.services.length > 4 && (
+                  <span className="text-xs text-muted-foreground">+{project.services.length - 4}</span>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center gap-1 text-xs text-muted-foreground pt-1">
+              <Calendar className="h-3 w-3" />
+              {new Date(project.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short" })}
+            </div>
           </div>
         </div>
       </Link>
     </motion.div>
   );
-};
-
-const Portfolio = () => {
-  const [activeSlug, setActiveSlug] = useState<string>("all");
-  const heroRef = useRef<HTMLDivElement>(null);
-  
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
-  const { pos: cursorPos, onMouseMove: onPageMouseMove, onMouseLeave: onPageMouseLeave } = useCursorFollow();
-
-  const { data: categories } = useQuery({
-    queryKey: ["categories"],
-    queryFn: () => categoryService.getCategories()
-  });
-
-  const { data: projectsData, isLoading } = useQuery({
-    queryKey: ["projects", activeSlug],
-    queryFn: () => projectsService.getProjects(activeSlug !== "all" ? { categorySlug: activeSlug } : undefined)
-  });
-
-  const projects = projectsData?.data || [];
-  // Ensure we only show published projects to normal users. The RLS should already filter this out, but filtering securely is great.
-  // Wait, RLS handles it.
-
-  return (
-    <div onMouseMove={onPageMouseMove} onMouseLeave={onPageMouseLeave}>
-      {/* Global cursor follower */}
-      {cursorPos.isInside && (
-        <div
-          className="pointer-events-none fixed z-[999] h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary/40 mix-blend-difference transition-[width,height] duration-200"
-          style={{ left: cursorPos.x, top: cursorPos.y }}
-        />
-      )}
-
-      <Navbar />
-      <main className="pb-20">
-        {/* Hero with parallax */}
-        <div ref={heroRef} className="relative flex min-h-[60vh] items-center justify-center overflow-hidden">
-          <div className="absolute inset-0 animate-gradient bg-gradient-to-br from-[hsl(0,84%,12%)] via-[hsl(350,70%,8%)] to-[hsl(10,60%,10%)] bg-[length:300%_300%]" />
-          <motion.div style={{ y: heroY, opacity: heroOpacity }} className="relative z-10 text-center px-6">
-            <ScrollReveal>
-              <h1 className="mb-4 text-5xl font-bold text-foreground sm:text-6xl lg:text-7xl" style={{ lineHeight: 1.2 }}>معرض الأعمال</h1>
-              <p className="text-lg text-muted-foreground max-w-md mx-auto">مشاريع إبداعية نفخر بها ونقدمها بأعلى معايير الجودة</p>
-            </ScrollReveal>
-          </motion.div>
-          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
-        </div>
-
-        <div className="container mx-auto px-6 -mt-8 relative z-10 min-h-[40vh]">
-          {/* Filters */}
-          <ScrollReveal className="mb-12 flex flex-wrap justify-center gap-3">
-            <button
-              onClick={() => setActiveSlug("all")}
-              className={`relative rounded-full px-6 py-2.5 text-sm font-medium transition-all duration-300 active:scale-95 ${
-                activeSlug === "all"
-                  ? "text-white shadow-lg shadow-primary/20"
-                  : "border border-border/50 text-muted-foreground hover:border-primary/30 hover:text-foreground bg-background/50 backdrop-blur-sm"
-              }`}
-            >
-              {activeSlug === "all" && (
-                <motion.div
-                  layoutId="filter-bg"
-                  className="absolute inset-0 rounded-full bg-gradient-brand"
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10">الكل</span>
-            </button>
-            {categories?.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveSlug(cat.slug)}
-                className={`relative rounded-full px-6 py-2.5 text-sm font-medium transition-all duration-300 active:scale-95 ${
-                  activeSlug === cat.slug
-                    ? "text-white shadow-lg shadow-primary/20"
-                    : "border border-border/50 text-muted-foreground hover:border-primary/30 hover:text-foreground bg-background/50 backdrop-blur-sm"
-                }`}
-              >
-                {activeSlug === cat.slug && (
-                  <motion.div
-                    layoutId="filter-bg"
-                    className="absolute inset-0 rounded-full bg-gradient-brand"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  />
-                )}
-                <span className="relative z-10">{cat.name}</span>
-              </button>
-            ))}
-          </ScrollReveal>
-
-          {/* Grid or Loading State */}
-          {isLoading ? (
-            <div className="flex justify-center items-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : projects.length > 0 ? (
-            <motion.div layout className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 auto-rows-[minmax(200px,auto)]">
-              <AnimatePresence>
-                {projects.map((project, i) => (
-                  <ProjectCard key={project.id} project={project} index={i} />
-                ))}
-              </AnimatePresence>
-            </motion.div>
-          ) : (
-            <div className="text-center py-20 text-muted-foreground">
-              لا توجد مشاريع في هذه الفئة حالياً.
-            </div>
-          )}
-        </div>
-      </main>
-      <Footer />
-    </div>
-  );
-};
+}
 
 export default Portfolio;

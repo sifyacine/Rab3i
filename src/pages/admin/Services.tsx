@@ -1,11 +1,9 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { Edit, Trash, Eye } from "lucide-react";
+import { Edit, Trash, Eye, Zap } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,51 +15,63 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-
-interface Service {
-  id: string;
-  name: string;
-  price: string;
-  status: "active" | "inactive";
-  category: string;
-}
-
-const mockServices: Service[] = [
-  { id: "1", name: "تصميم وتطوير المواقع", price: "تبدأ من 500$", status: "active", category: "تطوير ويب" },
-  { id: "2", name: "تطوير تطبيقات الجوال", price: "تبدأ من 1200$", status: "active", category: "تطبيق جوال" },
-  { id: "3", name: "تحليل البيانات والذكاء الاصطناعي", price: "حسب الطلب", status: "inactive", category: "تطوير ويب" },
-  { id: "4", name: "الهوية البصرية والتصميم", price: "تبدأ من 300$", status: "active", category: "تصميم جرافيك" },
-];
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { servicesService } from "@/services/servicesService";
+import { Service } from "@/types/portfolio";
+import { cn } from "@/lib/utils";
 
 const ServicesAdmin = () => {
   const navigate = useNavigate();
-  const [services, setServices] = useState<Service[]>(mockServices);
+  const queryClient = useQueryClient();
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
 
-  const confirmDelete = () => {
-    if (serviceToDelete) {
-      setServices(services.filter(s => s.id !== serviceToDelete));
+  const { data: services = [], isLoading } = useQuery({
+    queryKey: ["admin-services"],
+    queryFn: () => servicesService.getServices(),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => servicesService.deleteService(id),
+    onSuccess: () => {
       toast.success("تم حذف الخدمة بنجاح");
+      queryClient.invalidateQueries({ queryKey: ["admin-services"] });
       setServiceToDelete(null);
-    }
-  };
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحذف"),
+  });
 
   const columns = [
-    { header: "الخدمة", accessorKey: "name" as const },
-    { header: "الفئة", accessorKey: "category" as const },
-    { header: "السعر", accessorKey: "price" as const },
+    {
+      header: "الخدمة (عربي)",
+      accessorKey: "title_ar" as const,
+      cell: (item: Service) => (
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Zap className="h-4 w-4" />
+          </div>
+          <span className="font-medium">{item.title_ar}</span>
+        </div>
+      ),
+    },
+    { header: "Service (English)", accessorKey: "title_en" as const },
+    { header: "Slug", accessorKey: "slug" as const, cell: (item: Service) => (
+      <code className="rounded bg-secondary px-2 py-0.5 text-xs">{item.slug}</code>
+    )},
     {
       header: "الحالة",
-      accessorKey: "status" as const,
+      accessorKey: "is_active" as const,
       cell: (item: Service) => (
-        <Badge 
-          variant={item.status === "active" ? "default" : "secondary"}
+        <Badge
           className={cn(
             "font-medium",
-            item.status === "active" ? "bg-emerald-500 text-white" : "bg-slate-500/10 text-slate-500 border-slate-500/20"
+            item.is_active
+              ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
+              : "bg-slate-500/10 text-slate-500 border-slate-500/20"
           )}
+          variant="outline"
         >
-          {item.status === "active" ? "نشط" : "غير نشط"}
+          {item.is_active ? "نشط" : "غير نشط"}
         </Badge>
       ),
     },
@@ -70,41 +80,40 @@ const ServicesAdmin = () => {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">إدارة الخدمات</h1>
+        <div>
+          <h1 className="text-2xl font-bold">إدارة الخدمات</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            الخدمات والأدوات التي تستخدمها في مشاريعك – يمكن للعملاء التصفية بها
+          </p>
+        </div>
       </div>
 
       <SmartDataTable
         data={services}
         columns={columns}
-        cardTitle={(s) => s.name}
-        cardSubtitle={(s) => s.category}
+        cardTitle={(s: Service) => s.title_ar}
+        cardSubtitle={(s: Service) => s.title_en}
         onAdd={() => navigate("/admin/services/new")}
-        onRowClick={(s) => navigate(`/admin/services/${s.id}`)}
-        actions={(item) => (
+        onRowClick={(s: Service) => navigate(`/admin/services/${s.id}`)}
+        actions={(item: Service) => (
           <>
             <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => {
               e.stopPropagation();
               navigate(`/admin/services/${item.id}`);
             }}>
-              <Eye className="h-4 w-4" />
-              عرض التفاصيل
+              <Eye className="h-4 w-4" /> عرض التفاصيل
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => {
               e.stopPropagation();
               navigate(`/admin/services/${item.id}/edit`);
             }}>
-              <Edit className="h-4 w-4" />
-              تعديل
+              <Edit className="h-4 w-4" /> تعديل
             </DropdownMenuItem>
-            <DropdownMenuItem 
-              className="gap-2 cursor-pointer text-destructive focus:text-destructive" 
-              onClick={(e) => {
-                e.stopPropagation();
-                setServiceToDelete(item.id);
-              }}
+            <DropdownMenuItem
+              className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+              onClick={(e) => { e.stopPropagation(); setServiceToDelete(item.id); }}
             >
-              <Trash className="h-4 w-4" />
-              حذف
+              <Trash className="h-4 w-4" /> حذف
             </DropdownMenuItem>
           </>
         )}
@@ -115,12 +124,15 @@ const ServicesAdmin = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>حذف الخدمة؟</AlertDialogTitle>
             <AlertDialogDescription>
-              هل أنت متأكد من حذف هذه الخدمة؟ لا يمكن جلب البيانات المحذوفة مرة أخرى. سيتم إخفاء الخدمة من الموقع لجميع العملاء.
+              هل أنت متأكد من حذف هذه الخدمة؟ ستُزال من جميع المشاريع المرتبطة بها تلقائياً.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:justify-start">
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={() => serviceToDelete && deleteMutation.mutate(serviceToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               تأكيد الحذف
             </AlertDialogAction>
           </AlertDialogFooter>

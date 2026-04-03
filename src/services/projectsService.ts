@@ -1,18 +1,25 @@
 import { supabase } from '@/lib/supabase';
-import { Project, CreateProjectDTO, UpdateProjectDTO } from '@/types/portfolio';
+import { Project, CreateProjectDTO, UpdateProjectDTO, Service } from '@/types/portfolio';
+
+interface ProjectServiceJunction {
+  service: Service;
+}
+
+interface ProjectWithJunction extends Omit<Project, 'services'> {
+  services: ProjectServiceJunction[];
+}
 
 export const projectsService = {
-  async getProjects(filters?: { categorySlug?: string; search?: string; page?: number; limit?: number }) {
+  async getProjects(filters?: { categorySlug?: string; search?: string; page?: number; limit?: number; publishedOnly?: boolean }) {
     let query = supabase
       .from('projects')
-      .select('*, category:categories(*), project_media(*)', { count: 'exact' });
+      .select('*, category:categories(*), project_media(*), services:project_services(service:services(*))', { count: 'exact' });
 
-    // Only get published for public view, unless maybe we pass a flag.
-    // Given the context of public view finding published projects, the RLS policy will handle it for anon.
-    // However, for admin view, they will see all projects.
+    if (filters?.publishedOnly) {
+      query = query.eq('is_published', true);
+    }
 
     if (filters?.categorySlug) {
-      // Need to filter by category slug. Since it's a join, we can use inner join syntax in supabase.
       query = query.eq('category.slug', filters.categorySlug);
     }
 
@@ -26,18 +33,22 @@ export const projectsService = {
       query = query.range(from, to);
     }
 
-    // Order by created at
     query = query.order('created_at', { ascending: false });
 
     const { data, error, count } = await query;
     
     if (error) throw error;
     
-    // Supabase inner join filter might return null categories if not matched when filtering on it
-    let filteredData = data as Project[];
+    let rawData = (data ?? []) as unknown as ProjectWithJunction[];
     if (filters?.categorySlug) {
-      filteredData = filteredData.filter(p => p.category !== null);
+      rawData = rawData.filter(p => p.category !== null);
     }
+
+    // Flatten nested services from junction table
+    const filteredData: Project[] = rawData.map(p => ({
+      ...p,
+      services: p.services?.map(ps => ps.service).filter(Boolean) ?? [],
+    }));
 
     return { data: filteredData, count };
   },
@@ -45,13 +56,20 @@ export const projectsService = {
   async getProjectBySlug(slug: string) {
     const { data, error } = await supabase
       .from('projects')
-      .select('*, category:categories(*), project_media(*)')
+      .select('*, category:categories(*), project_media(*), services:project_services(service:services(*))')
       .eq('slug', slug)
       .single();
       
     if (error) throw error;
-    return data as Project;
+
+    // Flatten services from junction table
+    const proj = data as unknown as ProjectWithJunction;
+    return {
+      ...proj,
+      services: proj.services?.map(ps => ps.service).filter(Boolean) ?? [],
+    } as Project;
   },
+
 
   async createProject(project: CreateProjectDTO) {
     const { data, error } = await supabase

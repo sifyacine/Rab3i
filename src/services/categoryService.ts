@@ -6,7 +6,7 @@ export const categoryService = {
     const { data, error } = await supabase
       .from('categories')
       .select('*')
-      .order('name');
+      .order('title_ar');
       
     if (error) throw error;
     return data as Category[];
@@ -15,7 +15,7 @@ export const categoryService = {
   async createCategory(category: CreateCategoryDTO) {
     const { data, error } = await supabase
       .from('categories')
-      .insert([category])
+      .insert([{ ...category, name: category.title_ar }])
       .select()
       .single();
       
@@ -24,9 +24,12 @@ export const categoryService = {
   },
 
   async updateCategory(id: string, updates: Partial<CreateCategoryDTO>) {
+    const payload: Record<string, string | undefined> = { ...updates };
+    if (updates.title_ar) payload.name = updates.title_ar;
+    
     const { data, error } = await supabase
       .from('categories')
-      .update(updates)
+      .update(payload)
       .eq('id', id)
       .select()
       .single();

@@ -2,6 +2,20 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
+  title_ar: string;
+  title_en: string;
+}
+
+export interface Service {
+  id: string;
+  title_ar: string;
+  title_en: string;
+  slug: string;
+  description_ar: string | null;
+  description_en: string | null;
+  icon: string | null;
+  is_active: boolean;
+  created_at: string;
 }
 
 export interface ProjectMedia {
@@ -26,6 +40,7 @@ export interface Project {
   views: number;
   category?: Category;
   project_media?: ProjectMedia[];
+  services?: Service[];
 }
 
 export interface CreateProjectDTO {
@@ -35,6 +50,7 @@ export interface CreateProjectDTO {
   cover_image?: string;
   category_id?: string;
   is_published?: boolean;
+  service_ids?: string[];
 }
 
 export interface UpdateProjectDTO extends Partial<CreateProjectDTO> {}
@@ -42,4 +58,18 @@ export interface UpdateProjectDTO extends Partial<CreateProjectDTO> {}
 export interface CreateCategoryDTO {
   name: string;
   slug: string;
+  title_ar: string;
+  title_en: string;
 }
+
+export interface CreateServiceDTO {
+  title_ar: string;
+  title_en: string;
+  slug: string;
+  description_ar?: string;
+  description_en?: string;
+  icon?: string;
+  is_active?: boolean;
+}
+
+export interface UpdateServiceDTO extends Partial<CreateServiceDTO> {}

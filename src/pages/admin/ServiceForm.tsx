@@ -1,228 +1,289 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Check, Info, Briefcase, Tag, DollarSign, 
-  Layers, ChevronRight, ChevronLeft, Plus, Trash2
-} from "lucide-react";
+import { Check, Info, Tag, Layers, ChevronRight, ChevronLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { servicesService } from "@/services/servicesService";
+import { CreateServiceDTO } from "@/types/portfolio";
 
 const steps = [
-  { id: 1, title: "المعلومات الأساسية", icon: Tag },
-  { id: 2, title: "الوصف والمميزات", icon: Info },
-  { id: 3, title: "الحالة والظهور", icon: Layers },
+  { id: 1, title: "الاسم والمعرّف", icon: Tag },
+  { id: 2, title: "الوصف", icon: Info },
+  { id: 3, title: "الإعدادات", icon: Layers },
 ];
+
+const iconOptions = [
+  "Palette", "Layers", "Monitor", "Users", "Code", "Smartphone",
+  "FileText", "Share2", "Search", "Camera", "Video", "Zap",
+  "Target", "ShoppingCart", "Globe", "Database", "PenTool", "Image"
+];
+
+function generateSlug(text: string) {
+  return text.toLowerCase()
+    .replace(/[\u0600-\u06ff]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
 
 const ServiceFormAdmin = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isEditing = !!id;
-  
+
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<any>({
-    name: "",
-    category: "",
-    price: "",
-    description: "",
-    features: ["", "", ""],
-    status: "active"
+  const [form, setForm] = useState<CreateServiceDTO>({
+    title_ar: "",
+    title_en: "",
+    slug: "",
+    description_ar: "",
+    description_en: "",
+    icon: "Zap",
+    is_active: true,
+  });
+
+  const { data: existingService, isLoading: loadingExisting } = useQuery({
+    queryKey: ["admin-service", id],
+    queryFn: () => servicesService.getServiceById(id!),
+    enabled: isEditing,
   });
 
   useEffect(() => {
-    if (isEditing) {
-      // Mock data
-      setFormData({
-        id: "1", 
-        name: "تصميم وتطوير المواقع", 
-        category: "تطوير ويب",
-        price: "تبدأ من 500$", 
-        status: "active",
-        description: "تصميم وتطوير مواقع احترافية سريعة ومتجاوبة مع كافة الشاشات.",
-        features: ["تصميم عصري", "لوحة تحكم سهلة", "تحسين SEO", "دعم فني"]
+    if (existingService) {
+      setForm({
+        title_ar: existingService.title_ar,
+        title_en: existingService.title_en,
+        slug: existingService.slug,
+        description_ar: existingService.description_ar ?? "",
+        description_en: existingService.description_en ?? "",
+        icon: existingService.icon ?? "Zap",
+        is_active: existingService.is_active,
       });
     }
-  }, [id, isEditing]);
+  }, [existingService]);
 
-  const handleFeatureChange = (index: number, value: string) => {
-    const newFeatures = [...formData.features];
-    newFeatures[index] = value;
-    setFormData({ ...formData, features: newFeatures });
-  };
+  const createMutation = useMutation({
+    mutationFn: (data: CreateServiceDTO) => servicesService.createService(data),
+    onSuccess: () => {
+      toast.success("تمت إضافة الخدمة بنجاح");
+      queryClient.invalidateQueries({ queryKey: ["admin-services"] });
+      navigate("/admin/services");
+    },
+    onError: (err: Error) => toast.error(err.message || "حدث خطأ أثناء الحفظ"),
+  });
 
-  const addFeature = () => {
-    setFormData({ ...formData, features: [...formData.features, ""] });
-  };
+  const updateMutation = useMutation({
+    mutationFn: (data: CreateServiceDTO) => servicesService.updateService(id!, data),
+    onSuccess: () => {
+      toast.success("تم تحديث الخدمة بنجاح");
+      queryClient.invalidateQueries({ queryKey: ["admin-services"] });
+      navigate("/admin/services");
+    },
+    onError: (err: Error) => toast.error(err.message || "حدث خطأ أثناء الحفظ"),
+  });
 
-  const removeFeature = (index: number) => {
-    const newFeatures = formData.features.filter((_: any, i: number) => i !== index);
-    setFormData({ ...formData, features: newFeatures });
-  };
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  // Auto-generate slug from English title
+  useEffect(() => {
+    if (!isEditing && form.title_en) {
+      const slug = generateSlug(form.title_en);
+      if (slug) setForm(f => ({ ...f, slug }));
+    }
+  }, [form.title_en, isEditing]);
 
   const nextStep = () => {
-    if (currentStep === 1 && (!formData.name || !formData.category || !formData.price)) {
-      toast.error("يرجى إكمال الحقول الأساسية");
-      return;
+    if (currentStep === 1) {
+      if (!form.title_ar || !form.title_en || !form.slug) {
+        toast.error("يرجى إكمال الحقول الإلزامية");
+        return;
+      }
     }
-    if (currentStep < steps.length) setCurrentStep(currentStep + 1);
-  };
-
-  const prevStep = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
+    if (currentStep < steps.length) setCurrentStep(s => s + 1);
   };
 
   const handleSave = () => {
-    toast.success(isEditing ? "تم تحديث الخدمة بنجاح" : "تم إضافة الخدمة بنجاح");
-    navigate("/admin/services");
+    if (!form.title_ar || !form.title_en || !form.slug) {
+      toast.error("يرجى إكمال الحقول الإلزامية");
+      return;
+    }
+    if (isEditing) {
+      updateMutation.mutate(form);
+    } else {
+      createMutation.mutate(form);
+    }
   };
 
   const renderStep = () => {
     switch (currentStep) {
       case 1:
         return (
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-            <div className="space-y-4">
+          <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">اسم الخدمة</Label>
-                <Input 
-                  id="name" 
-                  value={formData.name} 
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="مثال: تطوير تطبيقات الجوال" 
+                <Label htmlFor="title_ar">الاسم بالعربية *</Label>
+                <Input
+                  id="title_ar"
+                  value={form.title_ar}
+                  onChange={e => setForm(f => ({ ...f, title_ar: e.target.value }))}
+                  placeholder="مثال: تصميم الشعارات"
+                  dir="rtl"
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="category">الفئة</Label>
-                  <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
-                    <SelectTrigger id="category"><SelectValue placeholder="اختر الفئة" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="تطوير ويب">تطوير ويب</SelectItem>
-                      <SelectItem value="تطبيق جوال">تطبيق جوال</SelectItem>
-                      <SelectItem value="تصميم جرافيك">تصميم جرافيك</SelectItem>
-                      <SelectItem value="تسويق رقمي">تسويق رقمي</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">السعر التقريبي</Label>
-                  <Input 
-                    id="price" 
-                    value={formData.price} 
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    placeholder="مثال: تبدأ من 500$ أو حسب الطلب" 
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="title_en">Name in English *</Label>
+                <Input
+                  id="title_en"
+                  value={form.title_en}
+                  onChange={e => setForm(f => ({ ...f, title_en: e.target.value }))}
+                  placeholder="e.g. Logo Design"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="slug">Slug (معرّف URL) *</Label>
+              <Input
+                id="slug"
+                value={form.slug}
+                onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/\s+/g, "-") }))}
+                placeholder="logo-design"
+                dir="ltr"
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground">يُستخدم في الروابط والتصفية – يُنشأ تلقائياً من الاسم الإنجليزي</p>
+            </div>
+            <div className="space-y-2">
+              <Label>الأيقونة</Label>
+              <div className="flex flex-wrap gap-2">
+                {iconOptions.map(icon => (
+                  <button
+                    key={icon}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, icon }))}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-mono transition-all ${form.icon === icon ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/50"}`}
+                  >
+                    {icon}
+                  </button>
+                ))}
               </div>
             </div>
           </motion.div>
         );
       case 2:
         return (
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="description">وصف الخدمة</Label>
-                <Textarea 
-                  id="description" 
-                  rows={4} 
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="اشرح ما تقدمه هذه الخدمة للعملاء..." 
-                />
-              </div>
-              <div className="space-y-3">
-                <Label>المميزات والخصائص</Label>
-                {formData.features.map((feature: string, index: number) => (
-                  <div key={index} className="flex gap-2">
-                    <Input 
-                      value={feature} 
-                      onChange={(e) => handleFeatureChange(index, e.target.value)}
-                      placeholder={`ميزة ${index + 1}`} 
-                    />
-                    <Button variant="ghost" size="icon" onClick={() => removeFeature(index)} className="text-destructive">
-                      <Trash2 size={18} />
-                    </Button>
-                  </div>
-                ))}
-                <Button variant="outline" size="sm" onClick={addFeature} className="gap-2">
-                  <Plus size={16} /> إضافة ميزة
-                </Button>
-              </div>
+          <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="desc_ar">الوصف بالعربية</Label>
+              <Textarea
+                id="desc_ar"
+                rows={3}
+                value={form.description_ar ?? ""}
+                onChange={e => setForm(f => ({ ...f, description_ar: e.target.value }))}
+                placeholder="صِف هذه الخدمة للزوار بالعربية..."
+                dir="rtl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="desc_en">Description in English</Label>
+              <Textarea
+                id="desc_en"
+                rows={3}
+                value={form.description_en ?? ""}
+                onChange={e => setForm(f => ({ ...f, description_en: e.target.value }))}
+                placeholder="Describe this service for visitors in English..."
+                dir="ltr"
+              />
             </div>
           </motion.div>
         );
       case 3:
         return (
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="status">حالة الخدمة</Label>
-                <Select value={formData.status} onValueChange={(v: any) => setFormData({ ...formData, status: v })}>
-                  <SelectTrigger id="status"><SelectValue placeholder="اختر الحالة" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">نشطة (تظهر في الموقع)</SelectItem>
-                    <SelectItem value="inactive">غير نشطة (مخفية)</SelectItem>
-                  </SelectContent>
-                </Select>
+          <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+            <div className="flex items-center justify-between p-5 rounded-xl border border-border/50 bg-secondary/20">
+              <div>
+                <p className="font-medium">تفعيل الخدمة</p>
+                <p className="text-sm text-muted-foreground mt-0.5">الخدمات النشطة تظهر في الموقع وتُستخدم لتصفية المشاريع</p>
               </div>
-              <div className="p-4 rounded-xl border border-primary/20 bg-primary/5">
-                <p className="text-sm text-primary font-medium">سيتم عرض هذه الخدمة في صفحة "خدماتنا" على الموقع الرئيسي للعملاء.</p>
+              <Switch
+                checked={form.is_active}
+                onCheckedChange={v => setForm(f => ({ ...f, is_active: v }))}
+              />
+            </div>
+
+            {/* Summary */}
+            <div className="space-y-3 p-5 rounded-xl border border-primary/20 bg-primary/5">
+              <h3 className="font-semibold text-sm text-primary">ملخص الخدمة</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <span className="text-muted-foreground">الاسم العربي:</span>
+                <span className="font-medium">{form.title_ar || "—"}</span>
+                <span className="text-muted-foreground">English Name:</span>
+                <span className="font-medium">{form.title_en || "—"}</span>
+                <span className="text-muted-foreground">Slug:</span>
+                <span className="font-mono text-xs">{form.slug || "—"}</span>
+                <span className="text-muted-foreground">الأيقونة:</span>
+                <span className="font-mono text-xs">{form.icon || "—"}</span>
               </div>
             </div>
           </motion.div>
         );
-      default:
-        return null;
     }
   };
 
+  if (isEditing && loadingExisting) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-3xl mx-auto space-y-8" dir="rtl">
+    <div className="max-w-2xl mx-auto space-y-8" dir="rtl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{isEditing ? "تعديل الخدمة" : "إضافة خدمة جديدة"}</h1>
-          <p className="text-muted-foreground mt-1">أكمل الخطوات التالية لإضافة بيانات الخدمة.</p>
+          <h1 className="text-2xl font-bold">{isEditing ? "تعديل الخدمة" : "إضافة خدمة جديدة"}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">أكمل الخطوات لإضافة خدمة ثنائية اللغة</p>
         </div>
-        <Button variant="ghost" asChild>
-          <Link to="/admin/services">الغاء</Link>
-        </Button>
+        <Button variant="ghost" asChild><Link to="/admin/services">إلغاء</Link></Button>
       </div>
 
+      {/* Step progress */}
       <div className="relative flex justify-between items-center px-4">
-        <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-secondary -translate-y-1/2" />
-        {steps.map((step) => (
-          <div key={step.id} className="relative flex flex-col items-center">
-            <div className={`h-10 w-10 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${currentStep >= step.id ? "bg-primary border-primary text-white shadow-lg shadow-primary/20" : "bg-background border-secondary text-muted-foreground"}`}>
+        <div className="absolute top-5 left-0 right-0 h-0.5 bg-secondary" />
+        {steps.map(step => (
+          <div key={step.id} className="relative flex flex-col items-center z-10">
+            <div className={`h-10 w-10 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${currentStep >= step.id ? "bg-primary border-primary text-white shadow-lg shadow-primary/20" : "bg-background border-border text-muted-foreground"}`}>
               {currentStep > step.id ? <Check size={18} /> : <step.icon size={18} />}
             </div>
-            <span className={`text-[10px] mt-2 font-medium ${currentStep >= step.id ? "text-primary" : "text-muted-foreground"}`}>{step.title}</span>
+            <span className={`text-[10px] mt-2 font-medium whitespace-nowrap ${currentStep >= step.id ? "text-primary" : "text-muted-foreground"}`}>{step.title}</span>
           </div>
         ))}
       </div>
 
-      <div className="bg-card border border-border/40 rounded-2xl p-8 shadow-sm min-h-[400px]">
+      <div className="bg-card border border-border/40 rounded-2xl p-8 shadow-sm min-h-[300px]">
         <AnimatePresence mode="wait">{renderStep()}</AnimatePresence>
       </div>
 
       <div className="flex items-center justify-between pb-10">
-        <Button variant="outline" onClick={prevStep} disabled={currentStep === 1} className="gap-2 rounded-xl">
-          <ChevronRight size={18} /> الخطوة السابقة
+        <Button variant="outline" onClick={() => setCurrentStep(s => s - 1)} disabled={currentStep === 1} className="gap-2 rounded-xl">
+          <ChevronRight size={18} /> السابق
         </Button>
         {currentStep === steps.length ? (
-          <Button onClick={handleSave} className="bg-gradient-brand gap-2 rounded-xl px-8 shadow-lg shadow-primary/20">حفظ الخدمة <Check size={18} /></Button>
+          <Button onClick={handleSave} disabled={isSaving} className="bg-gradient-brand gap-2 rounded-xl px-8 shadow-lg shadow-primary/20">
+            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
+            {isEditing ? "تحديث الخدمة" : "حفظ الخدمة"}
+          </Button>
         ) : (
-          <Button onClick={nextStep} className="gap-2 rounded-xl px-8">الخطوة التالية <ChevronLeft size={18} /></Button>
+          <Button onClick={nextStep} className="gap-2 rounded-xl px-8">
+            التالي <ChevronLeft size={18} />
+          </Button>
         )}
       </div>
     </div>
