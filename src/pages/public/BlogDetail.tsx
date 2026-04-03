@@ -1,38 +1,54 @@
 import { useParams, Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ScrollReveal from "@/components/ScrollReveal";
-
-const posts: Record<string, { title: string; author: string; date: string; content: string[] }> = {
-  "1": {
-    title: "كيف تبني هوية بصرية تميز علامتك التجارية؟",
-    author: "أحمد المالكي",
-    date: "١٥ مارس ٢٠٢٥",
-    content: [
-      "الهوية البصرية هي أول ما يراه جمهورك، وهي اللي تحدد الانطباع الأول عن علامتك التجارية. في عالم مليء بالمنافسة، الهوية البصرية القوية تعتبر عامل حاسم في تميزك.",
-      "أول خطوة في بناء الهوية البصرية هي فهم شخصية العلامة التجارية. ما هي القيم اللي تمثلها؟ ما هو الشعور اللي تبي توصله لجمهورك؟ الإجابة على هذي الأسئلة تحدد الاتجاه البصري الصحيح.",
-      "الألوان تلعب دور كبير في الهوية البصرية. كل لون يوصل رسالة مختلفة — الأزرق يوحي بالثقة والاحترافية، الأخضر يوحي بالنمو والطبيعة، والبرتقالي يوحي بالطاقة والحماس.",
-      "الخط المستخدم أيضاً جزء مهم من الهوية. اختيار الخط المناسب يعكس شخصية العلامة التجارية ويسهل قراءة المحتوى. التوازن بين الجمالية والوظيفية أمر ضروري.",
-      "أخيراً، الاتساق هو المفتاح. تطبيق الهوية البصرية بشكل موحد عبر جميع نقاط التواصل مع الجمهور يبني الثقة ويعزز التعرف على العلامة التجارية.",
-    ],
-  },
-  "2": {
-    title: "أسرار الحملات التسويقية الناجحة",
-    author: "سارة العتيبي",
-    date: "١٠ مارس ٢٠٢٥",
-    content: [
-      "الحملة التسويقية الناجحة تبدأ من فهم عميق لجمهورك المستهدف واحتياجاته. بدون هذا الفهم، أي حملة ممكن تكون مجرد ضوضاء إضافية.",
-      "التخطيط الاستراتيجي هو الأساس. قبل ما تبدأ أي حملة، لازم تحدد أهداف واضحة وقابلة للقياس. هل تبي زيادة الوعي؟ تحقيق مبيعات؟ بناء قاعدة عملاء؟",
-      "اختيار القنوات المناسبة مهم جداً. مو كل منصة مناسبة لكل جمهور. لازم تعرف وين يتواجد جمهورك وكيف يتفاعل مع المحتوى.",
-      "المحتوى الإبداعي هو اللي يميز حملتك عن غيرها. الرسائل المؤثرة والتصاميم الجذابة تخلق تفاعل حقيقي مع الجمهور.",
-    ],
-  },
-};
+import { blogService } from "@/services/blogService";
 
 const BlogDetail = () => {
-  const { id } = useParams();
-  const post = posts[id || "1"] || posts["1"];
+  const { slug } = useParams();
+
+  // Fetch blog post by slug
+  const { data: post, isLoading, error } = useQuery({
+    queryKey: ["blog-detail", slug],
+    queryFn: () => (slug ? blogService.getBlogPostBySlug(slug) : null),
+    enabled: !!slug,
+  });
+
+  if (isLoading) {
+    return (
+      <>
+        <Navbar />
+        <main className="pt-32 pb-20">
+          <div className="container mx-auto px-6 flex h-96 items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  if (error || !post) {
+    return (
+      <>
+        <Navbar />
+        <main className="pt-32 pb-20">
+          <article className="container mx-auto max-w-3xl px-6">
+            <div className="text-center py-20">
+              <p className="text-muted-foreground mb-4">لم يتم العثور على المقال</p>
+              <Link to="/blog" className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
+                <ArrowRight size={14} />
+                العودة للمدونة
+              </Link>
+            </div>
+          </article>
+        </main>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>
@@ -44,22 +60,67 @@ const BlogDetail = () => {
               <ArrowRight size={14} />
               العودة للمدونة
             </Link>
-            <h1 className="mb-6 text-3xl font-bold leading-snug text-foreground sm:text-4xl" style={{ textWrap: "balance" }}>
+            <h1
+              className="mb-6 text-3xl font-bold leading-snug text-foreground sm:text-4xl"
+              style={{ textWrap: "balance" } as React.CSSProperties}
+            >
               {post.title}
             </h1>
             <div className="mb-12 flex items-center gap-4 text-sm text-muted-foreground">
               <span>{post.author}</span>
               <span>·</span>
-              <span>{post.date}</span>
+              <span>{post.category}</span>
+              <span>·</span>
+              <span>
+                {post.published_at
+                  ? new Date(post.published_at).toLocaleDateString("ar-SA", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })
+                  : "—"}
+              </span>
             </div>
+
+            {post.featured_image_url && (
+              <div className="mb-12 overflow-hidden rounded-2xl border border-border/40">
+                <img
+                  src={post.featured_image_url}
+                  alt={post.title}
+                  className="w-full h-96 object-cover"
+                />
+              </div>
+            )}
           </ScrollReveal>
 
           <div className="space-y-6">
-            {post.content.map((p, i) => (
-              <ScrollReveal key={i} delay={i * 0.05}>
-                <p className="text-base leading-[1.9] text-foreground/85" style={{ textWrap: "pretty" }}>{p}</p>
-              </ScrollReveal>
-            ))}
+            <ScrollReveal>
+              <p className="text-lg font-medium leading-relaxed italic text-primary/80">
+                {post.excerpt}
+              </p>
+            </ScrollReveal>
+
+            <div className="space-y-6">
+              {post.content.split("\n\n").map((paragraph, i) => (
+                <ScrollReveal key={i} delay={i * 0.05}>
+                  <p
+                    className="text-base leading-[1.9] text-foreground/85"
+                    style={{ textWrap: "pretty" } as React.CSSProperties}
+                  >
+                    {paragraph}
+                  </p>
+                </ScrollReveal>
+              ))}
+            </div>
+
+            <ScrollReveal className="mt-12 pt-8 border-t border-border/20">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>المشاهدات: {post.views}</span>
+                <span className="text-xs text-muted-foreground/60">
+                  تم التحديث: {post.updated_at ? new Date(post.updated_at).toLocaleDateString("ar-SA") : "—"}
+                </span>
+              </div>
+            </ScrollReveal>
           </div>
         </article>
       </main>
