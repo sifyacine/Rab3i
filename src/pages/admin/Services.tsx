@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { Edit, Trash, Eye, Zap, Loader2 } from "lucide-react";
+import { Edit, Trash, Eye, Zap, Loader2, RefreshCw } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -21,11 +22,13 @@ import { servicesService } from "@/services/servicesService";
 import { Service } from "@/types/portfolio";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRefresh } from "@/contexts/RefreshContext";
 
 const ServicesAdmin = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { role } = useAuth();
+  const { refreshData, isRefreshing } = useRefresh();
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
 
   const { data: services = [], isLoading } = useQuery({
@@ -43,6 +46,10 @@ const ServicesAdmin = () => {
     },
     onError: () => toast.error("حدث خطأ أثناء الحذف"),
   });
+
+  const handleRefresh = async () => {
+    await refreshData(["admin-services"]);
+  };
 
   const columns = [
     {
@@ -97,6 +104,16 @@ const ServicesAdmin = () => {
             الخدمات والأدوات التي تستخدمها في مشاريعك – يمكن للعملاء التصفية بها
           </p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="gap-2"
+        >
+          <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+          تحديث
+        </Button>
       </div>
 
       <SmartDataTable
@@ -105,18 +122,23 @@ const ServicesAdmin = () => {
         cardTitle={(s: Service) => s.title_ar}
         cardSubtitle={(s: Service) => s.title_en}
         onAdd={() => navigate("/admin/services/new")}
-        onRowClick={(s: Service) => navigate(`/admin/services/${s.id}`)}
+        onRowClick={(s: Service) => {
+          navigate(`/admin/services/${s.id}`);
+          handleRefresh();
+        }}
         actions={(item: Service) => (
           <>
             <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => {
               e.stopPropagation();
               navigate(`/admin/services/${item.id}`);
+              handleRefresh();
             }}>
               <Eye className="h-4 w-4" /> عرض التفاصيل
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => {
               e.stopPropagation();
               navigate(`/admin/services/${item.id}/edit`);
+              handleRefresh();
             }}>
               <Edit className="h-4 w-4" /> تعديل
             </DropdownMenuItem>

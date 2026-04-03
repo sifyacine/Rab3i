@@ -33,9 +33,10 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
         </div>
       );
     }
-    
+
+    // Redirect to login if role doesn't match (not just 403 page)
     if (role !== requiredRole) {
-      return <Navigate to="/403" replace />;
+      return <Navigate to="/login" state={{ from: location, reason: "role_mismatch" }} replace />;
     }
   }
 

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRefresh } from "@/contexts/RefreshContext";
 
 const menuItems = [
   { title: "لوحة القيادة", icon: LayoutDashboard, url: "/admin" },
@@ -31,6 +32,13 @@ function AdminSidebar() {
   const { state } = useSidebar();
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const { refreshData } = useRefresh();
+
+  const handleNavigation = (url: string) => {
+    navigate(url);
+    // Soft refresh after navigation
+    setTimeout(() => refreshData(), 100);
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -61,11 +69,13 @@ function AdminSidebar() {
                   (item.url !== "/admin" && location.pathname.startsWith(item.url));
                 return (
                   <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
-                      <Link to={item.url}>
-                        <item.icon className={state === "collapsed" ? "h-8 w-8" : "h-4 w-4"} />
-                        <span>{item.title}</span>
-                      </Link>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      tooltip={item.title}
+                      onClick={() => handleNavigation(item.url)}
+                    >
+                      <item.icon className={state === "collapsed" ? "h-8 w-8" : "h-4 w-4"} />
+                      <span>{item.title}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -107,8 +117,13 @@ function AdminHeader() {
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { refreshData } = useRefresh();
 
-  // Route protection is handled by ProtectedRoute component
+  // Auto-refresh data when route changes
+  useEffect(() => {
+    refreshData();
+  }, [location.pathname, refreshData]);
 
   return (
     <SidebarProvider>

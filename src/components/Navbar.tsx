@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Sun, Moon } from "lucide-react";
+import { Menu, X, Sun, Moon, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navLinks = [
   { label: "الرئيسية", path: "/" },
@@ -16,6 +17,7 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const { user, role, signOut } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -54,6 +56,11 @@ const Navbar = () => {
     setMobileOpen(false);
   }, [location.pathname]);
 
+  const handleLogout = async () => {
+    await signOut();
+    setMobileOpen(false);
+  };
+
   return (
     <>
       <motion.nav
@@ -89,18 +96,52 @@ const Navbar = () => {
                 )}
               </Link>
             ))}
-            <Link
-              to="/login"
-              className="text-sm font-medium text-foreground/70 transition-colors hover:text-primary"
-            >
-              بوابة العملاء
-            </Link>
-            <Link
-              to="/request"
-              className="rounded-lg bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-white transition-all duration-300 hover:shadow-lg hover:shadow-primary/25 active:scale-[0.97]"
-            >
-              تواصل معنا
-            </Link>
+
+            {/* User Status / Auth Buttons */}
+            {user ? (
+              <div className="flex items-center gap-3">
+                {role === "admin" ? (
+                  <Link
+                    to="/admin"
+                    className="text-sm font-medium text-foreground/70 transition-colors hover:text-primary"
+                  >
+                    لوحة التحكم
+                  </Link>
+                ) : role === "client" ? (
+                  <Link
+                    to="/portal"
+                    className="text-sm font-medium text-foreground/70 transition-colors hover:text-primary"
+                  >
+                    بوابة العملاء
+                  </Link>
+                ) : null}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="text-sm font-medium text-foreground/70 hover:text-primary gap-2"
+                >
+                  <LogOut size={16} />
+                  تسجيل الخروج
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="text-sm font-medium text-foreground/70 transition-colors hover:text-primary"
+                >
+                  تسجيل الدخول
+                </Link>
+                <Link
+                  to="/request"
+                  className="rounded-lg bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-white transition-all duration-300 hover:shadow-lg hover:shadow-primary/25 active:scale-[0.97]"
+                >
+                  تواصل معنا
+                </Link>
+              </>
+            )}
+
             <Button
               variant="ghost"
               size="icon"
@@ -149,24 +190,55 @@ const Navbar = () => {
                 </Link>
               </motion.div>
             ))}
+
+            {/* Mobile User Status / Auth Buttons */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.4 }}
               className="flex flex-col items-center gap-4"
             >
-              <Link
-                to="/login"
-                className="text-lg font-medium text-foreground/80 hover:text-primary transition-colors"
-              >
-                بوابة العملاء
-              </Link>
-              <Link
-                to="/request"
-                className="rounded-lg bg-gradient-brand px-8 py-3 text-lg font-semibold text-white"
-              >
-                تواصل معنا
-              </Link>
+              {user ? (
+                <>
+                  {role === "admin" ? (
+                    <Link
+                      to="/admin"
+                      className="text-lg font-medium text-foreground/80 hover:text-primary transition-colors"
+                    >
+                      لوحة التحكم
+                    </Link>
+                  ) : role === "client" ? (
+                    <Link
+                      to="/portal"
+                      className="text-lg font-medium text-foreground/80 hover:text-primary transition-colors"
+                    >
+                      بوابة العملاء
+                    </Link>
+                  ) : null}
+                  <Button
+                    variant="outline"
+                    onClick={handleLogout}
+                    className="gap-2 rounded-xl"
+                  >
+                    <LogOut size={18} /> تسجيل الخروج
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="text-lg font-medium text-foreground/80 hover:text-primary transition-colors"
+                  >
+                    تسجيل الدخول
+                  </Link>
+                  <Link
+                    to="/request"
+                    className="rounded-lg bg-gradient-brand px-8 py-3 text-lg font-semibold text-white"
+                  >
+                    تواصل معنا
+                  </Link>
+                </>
+              )}
               <Button
                 variant="outline"
                 onClick={toggleTheme}
