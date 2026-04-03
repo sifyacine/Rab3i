@@ -6,6 +6,7 @@ import { requestsService, RequestStatus } from "@/services/requestsService";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
+import { useAuth } from "@/contexts/AuthContext";
 
 const statusColors: Record<RequestStatus, string> = {
   new: "bg-blue-500/10 text-blue-400",
@@ -26,14 +27,18 @@ const statusLabels: Record<RequestStatus, string> = {
 const DashboardHome = () => {
   const navigate = useNavigate();
 
+  const { role } = useAuth();
+
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: () => projectsService.getProjectStats(),
+    enabled: role === "admin"
   });
 
   const { data: recentRequests, isLoading: requestsLoading } = useQuery({
     queryKey: ["admin-recent-requests"],
     queryFn: () => requestsService.getRecentRequests(5),
+    enabled: role === "admin"
   });
 
   const isLoading = statsLoading || requestsLoading;

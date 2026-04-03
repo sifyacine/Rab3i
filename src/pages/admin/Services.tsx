@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { Edit, Trash, Eye, Zap } from "lucide-react";
+import { Edit, Trash, Eye, Zap, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,15 +20,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { servicesService } from "@/services/servicesService";
 import { Service } from "@/types/portfolio";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const ServicesAdmin = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { role } = useAuth();
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
 
   const { data: services = [], isLoading } = useQuery({
     queryKey: ["admin-services"],
     queryFn: () => servicesService.getServices(),
+    enabled: role === "admin"
   });
 
   const deleteMutation = useMutation({
@@ -76,6 +79,14 @@ const ServicesAdmin = () => {
       ),
     },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">

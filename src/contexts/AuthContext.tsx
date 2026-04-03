@@ -26,22 +26,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserRole(session.user.id);
-      } else {
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await fetchUserRole(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Auth init error:", error);
         setLoading(false);
       }
-    });
+    };
+
+    initAuth();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth event:", event);
+      // Skip INITIAL_SESSION as it's handled by getSession to avoid race conditions
+      if (event === "INITIAL_SESSION") return;
+      
       setSession(session);
       setUser(session?.user ?? null);
+      
       if (session?.user) {
+        setLoading(true); // Ensure loading is true while we fetch role after an event
         await fetchUserRole(session.user.id);
       } else {
         setRole(null);

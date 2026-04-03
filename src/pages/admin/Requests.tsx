@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestsService, GuestRequest, RequestStatus } from "@/services/requestsService";
+import { useAuth } from "@/contexts/AuthContext";
 
 const statusConfig: Record<RequestStatus, { label: string; className: string }> = {
   new:       { label: "جديد", className: "bg-blue-500/15 text-blue-600 border-blue-500/30" },
@@ -31,11 +32,13 @@ const statusConfig: Record<RequestStatus, { label: string; className: string }> 
 const Requests = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { role } = useAuth();
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
 
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ["admin-requests"],
     queryFn: () => requestsService.getRequests(),
+    enabled: role === "admin"
   });
 
   const deleteMutation = useMutation({

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { ExternalLink, Edit, Trash, Eye, Plus } from "lucide-react";
+import { ExternalLink, Edit, Trash, Eye, Plus, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,15 +21,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { projectsService } from "@/services/projectsService";
 import { Project } from "@/types/portfolio";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Projects = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { role } = useAuth();
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
   const { data: projectsData, isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: () => projectsService.getProjects(),
+    enabled: role === "admin"
   });
 
   const deleteMutation = useMutation({
@@ -73,6 +76,14 @@ const Projects = () => {
     },
     { header: "المشاهدات", accessorKey: "views" as const },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">

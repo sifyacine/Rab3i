@@ -9,5 +9,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // Only create the client if we have valid credentials to avoid crashes
 export const supabase = (supabaseUrl && supabaseAnonKey) 
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    })
   : (null as any); // Fallback to null; AuthContext and other components will need to handle this

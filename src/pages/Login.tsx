@@ -4,10 +4,12 @@ import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { useQueryClient } from "@tanstack/react-query";
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -65,6 +67,10 @@ const Login = () => {
         }
         
         role = role || "client";
+        
+        // Ensure stale data from previous navigation is cleared
+        queryClient.clear();
+        
         toast.success("تم تسجيل الدخول بنجاح");
         
         // Redirect logic
