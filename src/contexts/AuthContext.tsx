@@ -35,17 +35,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Get initial session without validation - let onAuthStateChange handle validation
         const { data: { session: storedSession } } = await supabase.auth.getSession();
 
-        if (storedSession) {
-          // Set initial state immediately
+        if (storedSession && storedSession.user) {
+          // Set session state first
           setSession(storedSession);
-          setUser(storedSession.user ?? null);
+          setUser(storedSession.user);
           setSessionValid(true);
-
-          if (storedSession.user) {
-            await fetchUserRole(storedSession.user.id);
-          } else {
-            setLoading(false);
-          }
+          
+          // Keep loading TRUE until role is fetched - critical for ProtectedRoute
+          // This prevents the "limbo state" where user exists but role is null
+          await fetchUserRole(storedSession.user.id);
+          // fetchUserRole will set loading to false when complete
         } else {
           // No stored session
           setSessionValid(false);
@@ -71,18 +70,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      if (newSession) {
+      if (newSession && newSession.user) {
         // Update auth state with the new session
         setSession(newSession);
-        setUser(newSession.user ?? null);
+        setUser(newSession.user);
         setSessionValid(true);
-
-        if (newSession.user) {
-          setLoading(true);
-          await fetchUserRole(newSession.user.id);
-        } else {
-          setLoading(false);
-        }
+        
+        // Keep loading true while fetching role
+        setLoading(true);
+        await fetchUserRole(newSession.user.id);
+        // fetchUserRole will set loading to false when complete
       } else {
         // No session: fully reset auth state
         setSession(null);
