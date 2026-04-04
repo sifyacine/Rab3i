@@ -26,15 +26,11 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
 
   // Handle role-based access
   if (requiredRole) {
-    // If loading is false but role is still null, something went wrong
-    // This shouldn't happen with our fix, but keep as safety net
+    // If loading is false but role is still null, treat it as an
+    // auth desync and force a fresh login instead of hanging
     if (role === null) {
-      console.warn("ProtectedRoute: Role is null but loading is false - this shouldn't happen");
-      return (
-        <div className="flex justify-center items-center h-screen">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
-      );
+      console.warn("ProtectedRoute: Role is null after auth init - redirecting to login to recover");
+      return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
     // Check if user has the required role
