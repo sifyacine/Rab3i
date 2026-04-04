@@ -24,6 +24,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (!supabase) {
+      console.warn("[Auth] Supabase client not available - running in limited mode");
       setLoading(false);
       return;
     }
@@ -32,6 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const initAuth = async () => {
       try {
+        console.log("[Auth] initAuth: Checking stored session");
         // Get initial session without validation - let onAuthStateChange handle validation
         const { data: { session: storedSession } } = await supabase.auth.getSession();
 
@@ -40,6 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSession(storedSession);
           setUser(storedSession.user);
           setSessionValid(true);
+          console.log("[Auth] initAuth: Found stored session for user", storedSession.user.id);
           
           // Keep loading TRUE until role is fetched - critical for ProtectedRoute
           // This prevents the "limbo state" where user exists but role is null
@@ -47,6 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // fetchUserRole will set loading to false when complete
         } else {
           // No stored session
+          console.log("[Auth] initAuth: No stored session found");
           setSessionValid(false);
           setLoading(false);
         }
@@ -55,6 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSessionValid(false);
         setLoading(false);
       } finally {
+        console.log("[Auth] initAuth: finished");
         isInitializing = false;
       }
     };
@@ -75,6 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(newSession);
         setUser(newSession.user);
         setSessionValid(true);
+        console.log("[Auth] onAuthStateChange:", event, "for user", newSession.user.id);
         
         // Keep loading true while fetching role
         setLoading(true);
@@ -96,6 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchUserRole = async (userId: string) => {
     if (!supabase) return;
     try {
+      console.log("[Auth] fetchUserRole: fetching role for", userId);
       // First try to get from profiles table
       const { data, error } = await supabase
         .from("profiles")
@@ -104,25 +111,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) {
-        console.warn("Could not fetch profile, checking user metadata:", error);
+        console.warn("[Auth] fetchUserRole: Could not fetch profile, checking user metadata:", error);
         // Fallback: Check metadata directly from session
         const { data: { session } } = await supabase.auth.getSession();
         const metadataRole = session?.user?.user_metadata?.role as UserRole;
 
         if (metadataRole) {
-          console.log("Found role in metadata:", metadataRole);
+          console.log("[Auth] fetchUserRole: Found role in metadata:", metadataRole);
           setRole(metadataRole);
         } else {
           // Final fallback
+          console.log("[Auth] fetchUserRole: No role in metadata, defaulting to 'client'");
           setRole("client");
         }
       } else {
-        setRole(data?.role as UserRole || "client");
+        const resolvedRole = (data?.role as UserRole) || "client";
+        console.log("[Auth] fetchUserRole: Role from profile:", resolvedRole);
+        setRole(resolvedRole);
       }
     } catch (err) {
-      console.error("Unexpected error fetching role:", err);
+      console.error("[Auth] fetchUserRole: Unexpected error fetching role:", err);
       setRole("client");
     } finally {
+      console.log("[Auth] fetchUserRole: done, setting loading=false");
       setLoading(false);
     }
   };
