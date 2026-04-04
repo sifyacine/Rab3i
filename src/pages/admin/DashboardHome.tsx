@@ -29,7 +29,7 @@ const statusLabels: Record<RequestStatus, string> = {
 
 const DashboardHome = () => {
   const navigate = useNavigate();
-  const { role } = useAuth();
+  const { role, loading: authLoading } = useAuth();
   const { refreshData, isRefreshing } = useRefresh();
 
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -44,7 +44,8 @@ const DashboardHome = () => {
     enabled: role === "admin"
   });
 
-  const isLoading = statsLoading || requestsLoading;
+  // Show loading if auth is still loading OR queries are loading
+  const isLoading = authLoading || statsLoading || requestsLoading;
 
   const handleRefresh = async () => {
     await refreshData(["admin-stats", "admin-recent-requests"]);
