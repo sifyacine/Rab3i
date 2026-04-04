@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, sessionValid } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -18,8 +18,8 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
     );
   }
 
-  // Redirect to login if not authenticated
-  if (!user) {
+  // If session isn't valid, redirect to login
+  if (!sessionValid || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

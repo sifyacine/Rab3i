@@ -21,7 +21,7 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user, role, signOut } = useAuth();
+  const { user, role, loading, signOut } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -107,7 +107,7 @@ const Navbar = () => {
             ))}
 
             {/* User Status / Auth Buttons */}
-            {user ? (
+            {loading ? null : user ? (
               <div className="flex items-center gap-3">
                 {role === "admin" ? (
                   <Link
@@ -207,7 +207,7 @@ const Navbar = () => {
               transition={{ delay: 0.4, duration: 0.4 }}
               className="flex flex-col items-center gap-4"
             >
-              {user ? (
+              {loading ? null : user ? (
                 <>
                   {role === "admin" ? (
                     <Link
