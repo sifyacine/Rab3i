@@ -28,34 +28,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    let isInitializing = true;
+
     const initAuth = async () => {
       try {
-        // Step 1: Try to restore session from localStorage
+        // Get initial session without validation - let onAuthStateChange handle validation
         const { data: { session: storedSession } } = await supabase.auth.getSession();
 
         if (storedSession) {
-          // Step 2: Validate that the stored session is actually valid with Supabase
-          const isValid = await validateAndRefreshSession();
-
-          if (!isValid) {
-            // Session was invalid/expired, clear everything
-            console.log("Stored session is invalid, clearing...");
-            setSession(null);
-            setUser(null);
-            setRole(null);
-            setSessionValid(false);
-            setLoading(false);
-            return;
-          }
-
-          // Get fresh session data after validation
-          const { data: { session: freshSession } } = await supabase.auth.getSession();
-          setSession(freshSession);
-          setUser(freshSession?.user ?? null);
+          // Set initial state immediately
+          setSession(storedSession);
+          setUser(storedSession.user ?? null);
           setSessionValid(true);
 
-          if (freshSession?.user) {
-            await fetchUserRole(freshSession.user.id);
+          if (storedSession.user) {
+            await fetchUserRole(storedSession.user.id);
           } else {
             setLoading(false);
           }
@@ -68,28 +55,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error("Auth init error:", error);
         setSessionValid(false);
         setLoading(false);
+      } finally {
+        isInitializing = false;
       }
     };
 
     initAuth();
 
-    // Listen for auth changes (including INITIAL_SESSION so refresh works reliably)
+    // Listen for auth changes - this will validate and refresh tokens automatically
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       console.log("Auth event:", event, newSession ? "with session" : "no session");
 
-      if (newSession) {
-        // Validate the new session
-        const isValid = await validateAndRefreshSession();
-        if (!isValid) {
-          setSession(null);
-          setUser(null);
-          setRole(null);
-          setSessionValid(false);
-          setLoading(false);
-          return;
-        }
+      // Skip the INITIAL_SESSION event during initialization to avoid race conditions
+      if (isInitializing && event === 'INITIAL_SESSION') {
+        return;
+      }
 
-        // Full auth state update
+      if (newSession) {
+        // Update auth state with the new session
         setSession(newSession);
         setUser(newSession.user ?? null);
         setSessionValid(true);
@@ -97,6 +80,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (newSession.user) {
           setLoading(true);
           await fetchUserRole(newSession.user.id);
+        } else {
+          setLoading(false);
         }
       } else {
         // No session: fully reset auth state

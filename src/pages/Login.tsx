@@ -52,6 +52,11 @@ const Login = () => {
       }
 
       if (data.user) {
+        // Clear stale query data
+        queryClient.clear();
+        
+        toast.success("تم تسجيل الدخول بنجاح");
+        
         // Fetch role to determine redirection
         const { data: profile } = await supabase
           .from("profiles")
@@ -68,10 +73,9 @@ const Login = () => {
         
         role = role || "client";
         
-        // Ensure stale data from previous navigation is cleared
-        queryClient.clear();
-        
-        toast.success("تم تسجيل الدخول بنجاح");
+        // Wait a bit for AuthContext to fully update before navigation
+        // This prevents race conditions with protected routes
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // Redirect logic
         if (from) {
