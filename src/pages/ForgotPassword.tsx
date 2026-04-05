@@ -4,6 +4,17 @@ import { motion } from "framer-motion";
 import { Mail, ArrowLeft, Send } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { buildAuthRedirectUrl } from "@/lib/authRedirect";
+
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+  return fallback;
+};
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -18,10 +29,15 @@ const ForgotPassword = () => {
     }
 
     setLoading(true);
-    
+
     try {
+      if (!supabase) {
+        toast.error("الخدمة غير متاحة حالياً");
+        return;
+      }
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: buildAuthRedirectUrl("/reset-password"),
       });
 
       if (error) {
@@ -31,8 +47,9 @@ const ForgotPassword = () => {
 
       setSubmitted(true);
       toast.success("تم إرسال تعليمات استعادة كلمة المرور إلى بريدك الإلكتروني");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Reset Password Error:", err);
+      toast.error(getErrorMessage(err, "خطأ في إرسال طلب استعادة كلمة المرور"));
     } finally {
       setLoading(false);
     }

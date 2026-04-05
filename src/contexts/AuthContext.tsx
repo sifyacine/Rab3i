@@ -1,8 +1,14 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { needsRoleRefresh } from "@/lib/authSession";
 
 type UserRole = "admin" | "client";
+
+const normalizeRole = (value: unknown): UserRole | null => {
+  if (value === "admin" || value === "client") return value;
+  return null;
+};
 
 interface AuthContextType {
   user: User | null;
@@ -19,143 +25,178 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
-  const [loading, setLoading] = useState(true);
+  // `bootstrapping` is true only during initial session + role resolution.
+  // It becomes false once and stays false (repeated auth events don't re-toggle it).
+  const [bootstrapping, setBootstrapping] = useState(true);
+  const [resolvingRole, setResolvingRole] = useState(false);
   const [sessionValid, setSessionValid] = useState(false);
+  // Keep a ref so callbacks always read the current role without stale closure
+  const roleRef = useRef<UserRole | null>(null);
+  const currentUserIdRef = useRef<string | null>(null);
+  const roleResolveSeqRef = useRef(0);
 
   useEffect(() => {
-    if (!supabase) {
-      console.warn("[Auth] Supabase client not available - running in limited mode");
-      setLoading(false);
-      return;
-    }
+    roleRef.current = role;
+  }, [role]);
 
-    let isInitializing = true;
-
-    const initAuth = async () => {
-      try {
-        console.log("[Auth] initAuth: Checking stored session");
-        // Get initial session without validation - let onAuthStateChange handle validation
-        const { data: { session: storedSession } } = await supabase.auth.getSession();
-
-        if (storedSession && storedSession.user) {
-          // Set session state first
-          setSession(storedSession);
-          setUser(storedSession.user);
-          setSessionValid(true);
-          console.log("[Auth] initAuth: Found stored session for user", storedSession.user.id);
-          
-          // Keep loading TRUE until role is fetched - critical for ProtectedRoute
-          // This prevents the "limbo state" where user exists but role is null
-          await fetchUserRole(storedSession.user.id);
-          // fetchUserRole will set loading to false when complete
-        } else {
-          // No stored session
-          console.log("[Auth] initAuth: No stored session found");
-          setSessionValid(false);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Auth init error:", error);
-        setSessionValid(false);
-        setLoading(false);
-      } finally {
-        console.log("[Auth] initAuth: finished");
-        isInitializing = false;
-      }
-    };
-
-    initAuth();
-
-    // Listen for auth changes - this will validate and refresh tokens automatically
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      console.log("Auth event:", event, newSession ? "with session" : "no session");
-
-      // Skip the INITIAL_SESSION event during initialization to avoid race conditions
-      if (isInitializing && event === 'INITIAL_SESSION') {
-        return;
-      }
-
-      if (newSession && newSession.user) {
-        // Update auth state with the new session
-        setSession(newSession);
-        setUser(newSession.user);
-        setSessionValid(true);
-        console.log("[Auth] onAuthStateChange:", event, "for user", newSession.user.id);
-        
-        // Keep loading true while fetching role
-        setLoading(true);
-        await fetchUserRole(newSession.user.id);
-        // fetchUserRole will set loading to false when complete
-      } else {
-        // No session: fully reset auth state
-        setSession(null);
-        setUser(null);
-        setRole(null);
-        setSessionValid(false);
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchUserRole = async (userId: string) => {
-    if (!supabase) return;
+  // ── Role resolver ──────────────────────────────────────────────────────────
+  const resolveRole = useCallback(async (userId: string, metadataRole?: unknown): Promise<UserRole> => {
+    if (!supabase) return "client";
     try {
-      console.log("[Auth] fetchUserRole: fetching role for", userId);
-      // First try to get from profiles table
       const { data, error } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", userId)
         .single();
 
-      if (error) {
-        console.warn("[Auth] fetchUserRole: Could not fetch profile, checking user metadata:", error);
-        // Fallback: Check metadata directly from session
-        const { data: { session } } = await supabase.auth.getSession();
-        const metadataRole = session?.user?.user_metadata?.role as UserRole;
+      if (!error && data?.role) {
+        return normalizeRole(data.role) ?? "client";
+      }
 
-        if (metadataRole) {
-          console.log("[Auth] fetchUserRole: Found role in metadata:", metadataRole);
-          setRole(metadataRole);
+      // Fallback to user metadata from current event/session
+      const roleFromMetadata = normalizeRole(metadataRole);
+      if (roleFromMetadata) return roleFromMetadata;
+
+      // Final fallback to live auth user metadata (if same user)
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+
+      if (authUser?.id === userId) {
+        return normalizeRole(authUser.user_metadata?.role) ?? "client";
+      }
+
+      return "client";
+    } catch {
+      return normalizeRole(metadataRole) ?? "client";
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) {
+      console.warn("[Auth] Supabase client unavailable — limited mode");
+      setBootstrapping(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    const initAuth = async () => {
+      try {
+        const { data: { session: storedSession } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+
+        if (storedSession?.user) {
+          setSession(storedSession);
+          setUser(storedSession.user);
+          setSessionValid(true);
+          const resolvedRole = await resolveRole(
+            storedSession.user.id,
+            storedSession.user.user_metadata?.role
+          );
+          if (!isMounted) return;
+          setRole(resolvedRole);
+          currentUserIdRef.current = storedSession.user.id;
         } else {
-          // Final fallback
-          console.log("[Auth] fetchUserRole: No role in metadata, defaulting to 'client'");
-          setRole("client");
+          setSession(null);
+          setUser(null);
+          setSessionValid(false);
+          setRole(null);
+          currentUserIdRef.current = null;
+        }
+      } catch (err) {
+        console.error("[Auth] init error:", err);
+        if (isMounted) {
+          setSession(null);
+          setUser(null);
+          setSessionValid(false);
+          setRole(null);
+          currentUserIdRef.current = null;
+        }
+      } finally {
+        if (isMounted) setBootstrapping(false);
+      }
+    };
+
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      if (!isMounted) return;
+
+      if (event === "INITIAL_SESSION") return; // handled by initAuth
+
+      if (newSession?.user) {
+        setSession(newSession);
+        setUser(newSession.user);
+        setSessionValid(true);
+        const previousUserId = currentUserIdRef.current;
+
+        const nextUserId = newSession.user.id;
+        const shouldRefreshRole = needsRoleRefresh(
+          event,
+          roleRef.current,
+          previousUserId,
+          nextUserId
+        );
+
+        currentUserIdRef.current = nextUserId;
+
+        // Re-resolve role only when needed
+        if (shouldRefreshRole) {
+          const requestSeq = ++roleResolveSeqRef.current;
+          const roleUserId = nextUserId;
+          setResolvingRole(true);
+
+          try {
+            const resolvedRole = await resolveRole(roleUserId, newSession.user.user_metadata?.role);
+            if (!isMounted) return;
+
+            // Ignore stale requests (newer one started) or user switched again
+            if (roleResolveSeqRef.current === requestSeq && currentUserIdRef.current === roleUserId) {
+              setRole(resolvedRole);
+            }
+          } finally {
+            if (isMounted && roleResolveSeqRef.current === requestSeq) {
+              setResolvingRole(false);
+            }
+          }
         }
       } else {
-        const resolvedRole = (data?.role as UserRole) || "client";
-        console.log("[Auth] fetchUserRole: Role from profile:", resolvedRole);
-        setRole(resolvedRole);
+        // Session gone
+        setSession(null);
+        setUser(null);
+        setRole(null);
+        setSessionValid(false);
+        currentUserIdRef.current = null;
+        roleResolveSeqRef.current += 1;
+        setResolvingRole(false);
       }
-    } catch (err) {
-      console.error("[Auth] fetchUserRole: Unexpected error fetching role:", err);
-      setRole("client");
-    } finally {
-      console.log("[Auth] fetchUserRole: done, setting loading=false");
-      setLoading(false);
-    }
-  };
+    });
 
-  const signOut = async () => {
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [resolveRole]);
+
+  const signOut = async (): Promise<void> => {
     try {
-      if (supabase) {
-        // Sign out from Supabase and clear persisted session
-        await supabase.auth.signOut();
-      }
+      if (supabase) await supabase.auth.signOut();
     } finally {
-      // Ensure local auth state is fully cleared immediately
       setSession(null);
       setUser(null);
       setRole(null);
       setSessionValid(false);
-      setLoading(false);
+      currentUserIdRef.current = null;
+      roleResolveSeqRef.current += 1;
+      setResolvingRole(false);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, loading, signOut, sessionValid }}>
+    <AuthContext.Provider
+      value={{ user, session, role, loading: bootstrapping || resolvingRole, signOut, sessionValid }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -109,13 +109,51 @@ export const requestsService = {
 
   // Client: get own requests (after signing up, linked by email)
   async getMyRequests(): Promise<GuestRequest[]> {
-    const { data, error } = await supabase
+    if (!supabase) return [];
+
+    // Get authenticated user to filter by their user_id
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+     
+    if (authError || !user) {
+      // Not authenticated — return empty array for safety
+      return [];
+    }
+
+    const { data: linkedRequests, error: linkedError } = await supabase
       .from('requests')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return data as GuestRequest[];
+    if (linkedError) throw linkedError;
+
+    const userEmail = user.email?.trim();
+    if (!userEmail) {
+      return (linkedRequests ?? []) as GuestRequest[];
+    }
+
+    // Also include legacy requests submitted before account creation
+    // (same email, not yet linked to user_id)
+    const { data: legacyRequests, error: legacyError } = await supabase
+      .from('requests')
+      .select('*')
+      .is('user_id', null)
+      .ilike('guest_email', userEmail)
+      .order('created_at', { ascending: false });
+
+    if (legacyError) throw legacyError;
+
+    const mergedById = new Map<string, GuestRequest>();
+    for (const request of linkedRequests ?? []) {
+      mergedById.set(request.id, request as GuestRequest);
+    }
+    for (const request of legacyRequests ?? []) {
+      mergedById.set(request.id, request as GuestRequest);
+    }
+
+    return Array.from(mergedById.values()).sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   },
 
   // Admin: get most recent requests for dashboard

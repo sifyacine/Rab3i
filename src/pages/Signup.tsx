@@ -4,6 +4,17 @@ import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, User, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { buildAuthRedirectUrl } from "@/lib/authRedirect";
+
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+  return fallback;
+};
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -22,8 +33,13 @@ const Signup = () => {
     }
 
     setLoading(true);
-    
+
     try {
+      if (!supabase) {
+        toast.error("الخدمة غير متاحة حالياً");
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -32,6 +48,7 @@ const Signup = () => {
             full_name: fullName,
             phone: phone,
           },
+          emailRedirectTo: buildAuthRedirectUrl("/"),
         },
       });
 
@@ -44,11 +61,12 @@ const Signup = () => {
         toast.success("تم إنشاء الحساب بنجاح! يرجى التحقق من بريدك الإلكتروني لتنشيط الحساب.");
         navigate("/login");
       }
-    } catch (err: any) {
-      console.error("Signup Error:", err);
-    } finally {
-      setLoading(false);
-    }
+      } catch (err: unknown) {
+        console.error("Signup Error:", err);
+        toast.error(getErrorMessage(err, "خطأ في إنشاء الحساب"));
+      } finally {
+        setLoading(false);
+      }
   };
 
   return (

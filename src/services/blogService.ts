@@ -1,5 +1,73 @@
 import { supabase } from '@/lib/supabase';
 
+interface BlogViewRow {
+  views: number;
+}
+
+/**
+ * Generates a URL-safe slug from a title.
+ * - Converts to lowercase and replaces spaces with hyphens
+ * - Strips characters that are unsafe for URLs (keeps Unicode/Arabic letters)
+ * - Collapses multiple hyphens
+ * - Falls back to timestamp-based slug if result is empty
+ */
+export function generateSlug(title: string): string {
+  if (!title || !title.trim()) {
+    // Fallback to timestamp to ensure unique non-empty slug
+    return `post-${Date.now()}`;
+  }
+
+  const slug = title
+    .toLowerCase()
+    // Normalize Arabic diacritics (tashkeel) for cleaner slugs
+    // Only strip specific Arabic diacritics range, not all combining marks
+    .normalize('NFD')
+    .replace(/[\u064B-\u065F\u0670]/g, '')
+    // Re-combine for other scripts (NFC normalizes combining marks back)
+    .normalize('NFC')
+    // Replace spaces with hyphens
+    .replace(/\s+/g, '-')
+    // Keep Unicode letters, numbers, and hyphens; strip everything else
+    .replace(/[^\p{L}\p{N}-]/gu, '')
+    // Collapse multiple hyphens
+    .replace(/-+/g, '-')
+    // Trim leading/trailing hyphens
+    .replace(/^-+|-+$/g, '');
+
+  // Fallback if slug is empty after sanitization (e.g., title was only symbols)
+  if (!slug) {
+    return `post-${Date.now()}`;
+  }
+
+  return slug;
+}
+
+/**
+ * Generates a unique slug by appending a numeric suffix if needed.
+ * @param baseSlug - The sanitized base slug
+ * @param exists - Async function that checks if a slug exists in DB
+ * @param maxAttempts - Max suffixed attempts (default 100)
+ */
+export async function uniqueSlug(
+  baseSlug: string,
+  exists: (slug: string) => Promise<boolean>,
+  maxAttempts = 100
+): Promise<string> {
+  if (!(await exists(baseSlug))) {
+    return baseSlug;
+  }
+
+  for (let i = 2; i <= maxAttempts; i++) {
+    const candidate = `${baseSlug}-${i}`;
+    if (!(await exists(candidate))) {
+      return candidate;
+    }
+  }
+
+  // Last resort: append timestamp
+  return `${baseSlug}-${Date.now()}`;
+}
+
 export interface BlogPost {
   id: string;
   title: string;
@@ -67,21 +135,65 @@ export const blogService = {
 
     if (error) throw error;
 
-    // Increment views
-    await supabase
-      .from('blog_posts')
-      .update({ views: (data?.views || 0) + 1 })
-      .eq('id', data.id);
+    // Race-safe view increment: optimistic locking with compare-and-set
+    // Retry once if first attempt didn't match (concurrent update)
+    await this._incrementViewsSafely(data.id, data.views);
 
     return data as BlogPost;
   },
 
+  /**
+   * Atomically increments views using optimistic locking.
+   * Only updates if current views match expected value.
+   * Retries once on mismatch to handle race conditions.
+   */
+  async _incrementViewsSafely(postId: string, expectedViews: number, attempt = 1): Promise<void> {
+    if (!supabase) return;
+
+    const { data: updatedRow, error } = await supabase
+      .from('blog_posts')
+      .update({ views: expectedViews + 1 })
+      .eq('id', postId)
+      .eq('views', expectedViews)
+      .select('id')
+      .maybeSingle();
+
+    if (error) throw error;
+
+    // Updated successfully on this optimistic attempt
+    if (updatedRow) return;
+
+    // If optimistic update matched no row (concurrent writer), retry with latest value
+    if (attempt < 2) {
+      const { data } = await supabase
+        .from('blog_posts')
+        .select('views')
+        .eq('id', postId)
+        .single<BlogViewRow>();
+
+      if (data?.views === expectedViews + 1) {
+        return;
+      }
+
+      if (typeof data?.views === 'number') {
+        await this._incrementViewsSafely(postId, data.views, attempt + 1);
+      }
+    }
+  },
+
   async createBlogPost(post: CreateBlogDTO): Promise<BlogPost> {
-    // Generate slug from title
-    const slug = post.title
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
+    // Generate slug from title using Unicode-safe generator
+    const baseSlug = generateSlug(post.title);
+
+    // Check for existing slugs and generate unique one
+    const slug = await uniqueSlug(baseSlug, async (s) => {
+      const { data } = await supabase
+        .from('blog_posts')
+        .select('id')
+        .eq('slug', s)
+        .maybeSingle();
+      return !!data;
+    });
 
     const { data, error } = await supabase
       .from('blog_posts')
@@ -100,14 +212,22 @@ export const blogService = {
   },
 
   async updateBlogPost(id: string, updates: Partial<CreateBlogDTO>): Promise<BlogPost> {
-    const updateData: any = { ...updates };
+    const updateData: Record<string, unknown> = { ...updates };
 
     // Update slug if title changes
     if (updates.title) {
-      updateData.slug = updates.title
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9-]/g, '');
+      const baseSlug = generateSlug(updates.title);
+      const slug = await uniqueSlug(baseSlug, async (s) => {
+        // Exclude current post from check
+        const { data } = await supabase
+          .from('blog_posts')
+          .select('id')
+          .eq('slug', s)
+          .neq('id', id)
+          .maybeSingle();
+        return !!data;
+      });
+      updateData.slug = slug;
     }
 
     const { data, error } = await supabase
@@ -180,7 +300,7 @@ export const blogService = {
     updates: Partial<CreateBlogDTO>,
     imageFile?: File
   ): Promise<BlogPost> {
-    let finalUpdates = { ...updates };
+    const finalUpdates = { ...updates };
 
     // Upload image if provided
     if (imageFile) {

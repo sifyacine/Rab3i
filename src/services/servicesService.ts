@@ -72,21 +72,40 @@ export const servicesService = {
   },
 
   async setProjectServices(projectId: string, serviceIds: string[]) {
-    // Delete existing links first
-    const { error: deleteError } = await supabase
+    // Differential update: only delete extras and insert new ones
+    // This avoids data loss if insert fails (vs delete-then-insert)
+    
+    // 1. Fetch current links
+    const { data: currentLinks, error: fetchError } = await supabase
       .from('project_services')
-      .delete()
+      .select('service_id')
       .eq('project_id', projectId);
       
-    if (deleteError) throw deleteError;
+    if (fetchError) throw fetchError;
     
-    if (serviceIds.length === 0) return;
+    const currentServiceIds = new Set(currentLinks?.map(l => l.service_id) ?? []);
+    const desiredServiceIds = new Set(serviceIds);
     
-    // Insert new links
-    const { error: insertError } = await supabase
-      .from('project_services')
-      .insert(serviceIds.map(sid => ({ project_id: projectId, service_id: sid })));
-      
-    if (insertError) throw insertError;
+    // 2. Delete only extras (in DB but not in desired list)
+    const extras = [...currentServiceIds].filter(id => !desiredServiceIds.has(id));
+    if (extras.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('project_services')
+        .delete()
+        .eq('project_id', projectId)
+        .in('service_id', extras);
+        
+      if (deleteError) throw deleteError;
+    }
+    
+    // 3. Insert only new ones (in desired list but not in DB)
+    const toInsert = serviceIds.filter(id => !currentServiceIds.has(id));
+    if (toInsert.length > 0) {
+      const { error: insertError } = await supabase
+        .from('project_services')
+        .insert(toInsert.map(sid => ({ project_id: projectId, service_id: sid })));
+        
+      if (insertError) throw insertError;
+    }
   }
 };

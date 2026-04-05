@@ -5,6 +5,16 @@ import { Lock, Eye, EyeOff, ArrowLeft, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+  return fallback;
+};
+
 const ResetPassword = () => {
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
@@ -13,13 +23,37 @@ const ResetPassword = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Check if we have a session (Supabase handles the recovery token automatically)
+    if (!supabase) {
+      toast.error("الخدمة غير متاحة حالياً");
+      navigate("/forgot-password");
+      return;
+    }
+
+    // Supabase places the recovery token in the URL hash fragment.
+    // getSession() resolves it asynchronously; we give it up to 3 seconds
+    // before concluding there's no recovery session.
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (!cancelled) {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (!cancelled && !session) {
+            toast.error("انتهت صلاحية الجلسة، يرجى طلب رابط استعادة جديد.");
+            navigate("/forgot-password");
+          }
+        });
+      }
+    }, 3000);
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        toast.error("انتهت صلاحية الجلسة، يرجى طلب رابط استعادة جديد.");
-        navigate("/forgot-password");
+      if (!cancelled && !session) {
+        // No session now — let the timer handle redirect if still missing after 3s
       }
     });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,8 +68,14 @@ const ResetPassword = () => {
     }
 
     setLoading(true);
-    
+
     try {
+      if (!supabase) {
+        toast.error("الخدمة غير متاحة حالياً");
+        navigate("/forgot-password");
+        return;
+      }
+
       const { error } = await supabase.auth.updateUser({
         password: password
       });
@@ -47,8 +87,9 @@ const ResetPassword = () => {
 
       toast.success("تم تحديث كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول.");
       navigate("/login");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Reset Password Error:", err);
+      toast.error(getErrorMessage(err, "خطأ في تحديث كلمة المرور"));
     } finally {
       setLoading(false);
     }
