@@ -14,8 +14,7 @@ export const supabase = (supabaseUrl && supabaseAnonKey)
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        // Refresh token before it expires
-        flowType: 'pkce',
+
       }
     })
   : (null as any); // Fallback to null; AuthContext and other components will need to handle this
@@ -32,15 +31,10 @@ export async function validateAndRefreshSession(): Promise<boolean> {
     const { data, error } = await supabase.auth.refreshSession();
 
     if (error || !data.session) {
-      // Session is invalid or expired
-      console.warn("Session validation failed:", error?.message);
-      // Clear the invalid session from storage
       await supabase.auth.signOut();
       return false;
     }
 
-    // Session is valid
-    console.log("Session validated and refreshed");
     return true;
   } catch (err) {
     console.error("Session validation error:", err);

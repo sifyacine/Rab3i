@@ -4,7 +4,7 @@ This repo is a **React 18 + Vite + TypeScript** app with **Tailwind + shadcn/ui*
 
 ## Golden rules (for agents)
 
-- Work on the **`dev`** branch only.
+- Work on the **`dev`** branch only. **Never push directly to `main`.** The `main` branch is live on Netlify; the user will explicitly say when to merge/push to `main`, or will do it themselves.
 - Prefer **small, reversible diffs**. Avoid broad refactors unless explicitly requested.
 - Use existing patterns:
   - Routing is defined in **`src/App.tsx`** (all routes inline)

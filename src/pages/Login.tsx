@@ -25,8 +25,13 @@ const Login = () => {
       return;
     }
 
+    if (!supabase) {
+      toast.error("الخدمة غير متاحة حالياً");
+      return;
+    }
+
     setLoading(true);
-    
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -34,58 +39,40 @@ const Login = () => {
       });
 
       if (error) {
-        let errorMsg = "خطأ في تسجيل الدخول";
         const msg = error.message.toLowerCase();
-        
+        let errorMsg = "خطأ في تسجيل الدخول";
+
         if (msg.includes("invalid login credentials")) {
           errorMsg = "البريد الإلكتروني أو كلمة المرور غير صحيحة";
         } else if (msg.includes("email not confirmed")) {
           errorMsg = "يرجى تأكيد البريد الإلكتروني الخاص بك";
         } else if (msg.includes("rate limit")) {
           errorMsg = "لقد تجاوزت الحد المسموح به من المحاولات، يرجى المحاولة لاحقاً";
-        } else {
-          errorMsg = error.message;
         }
-        
+
         toast.error(errorMsg);
-        throw error;
+        return;
       }
 
-      if (data.user) {
-        // Clear stale query data
-        queryClient.clear();
-        
-        toast.success("تم تسجيل الدخول بنجاح");
-        
-        // Fetch role to determine redirection
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", data.user.id)
-          .single();
-
-        let role = profile?.role;
-        
-        // Fallback to metadata if profile is not found
-        if (!role && data.user.user_metadata?.role) {
-          role = data.user.user_metadata.role;
-        }
-        
-        role = role || "client";
-        
-        // Wait a bit for AuthContext to fully update before navigation
-        // This prevents race conditions with protected routes
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Redirect logic
-        if (from) {
-          navigate(from, { replace: true });
-        } else {
-          navigate(role === "admin" ? "/admin" : "/portal", { replace: true });
-        }
+      if (!data.user) {
+        toast.error("حدث خطأ غير متوقع، يرجى المحاولة مجدداً");
+        return;
       }
-    } catch (err: any) {
-      console.error("Login Error:", err);
+
+      queryClient.clear();
+      toast.success("تم تسجيل الدخول بنجاح");
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .single();
+
+      const role = profile?.role ?? data.user.user_metadata?.role ?? "client";
+
+      navigate(from ?? (role === "admin" ? "/admin" : "/portal"), { replace: true });
+    } catch {
+      toast.error("حدث خطأ غير متوقع، يرجى المحاولة مجدداً");
     } finally {
       setLoading(false);
     }
@@ -144,7 +131,7 @@ const Login = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-3 pr-10 pl-10 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-3 pr-10 pl-10 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/50"
                   placeholder="••••••••"
                 />
                 <button type="button" onClick={() => setShowPass(!showPass)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
