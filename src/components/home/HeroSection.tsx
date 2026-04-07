@@ -94,7 +94,7 @@ const HeroSection = () => {
             to="/request"
             className="group flex items-center gap-2 rounded-xl bg-gradient-brand px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 active:scale-[0.97]"
           >
-            خلنا نجلس معاً
+            خلنا نجلس معا
             <ArrowLeft size={16} className="transition-transform duration-300 group-hover:-translate-x-1" />
           </Link>
           <Link
