@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Zap, ArrowLeft, Loader2, Palette, Megaphone, PenTool, Globe, Building, Rocket } from "lucide-react";
+import { Zap, ArrowLeft, Loader2, Palette, Megaphone, PenTool, Globe, Building, Rocket, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import ScrollReveal from "../ScrollReveal";
 
@@ -30,9 +30,14 @@ const services = [
     title_en: "Internal Marketing Systems"
   },
   {
+    icon: RefreshCw,
+    title: "إعادة تموضع العلامات (Rebranding)",
+    title_en: "Brand Repositioning"
+  },
+  {
     icon: Globe,
-    title: "تصميم وتطوير مواقع الويب",
-    title_en: "Web Development"
+    title: "تصميم وتطوير مواقع الويب والتطبيقات ووصفحات الهبوط",
+    title_en: "Web & App Development"
   }
 ];
 
