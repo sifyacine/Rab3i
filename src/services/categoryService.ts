@@ -6,7 +6,7 @@ export const categoryService = {
     const { data, error } = await supabase
       .from('categories')
       .select('*')
-      .order('sort_order', { ascending: true });
+      .order('name_ar', { ascending: true });
         
     if (error) {
       console.error('getCategories error:', error);
@@ -19,14 +19,9 @@ export const categoryService = {
     const { data, error } = await supabase
       .from('categories')
       .insert([{ 
-        name: category.title_ar,
-        title_ar: category.title_ar,
-        title_en: category.title_en,
-        slug: category.slug,
-        description_ar: category.description_ar,
-        description_en: category.description_en,
-        sort_order: category.sort_order ?? 0,
-        is_active: true
+        name_ar: category.title_ar,
+        name_en: category.title_en,
+        slug: category.slug
       }])
       .select()
       .single();
@@ -37,15 +32,9 @@ export const categoryService = {
 
   async updateCategory(id: string, updates: Partial<CreateCategoryDTO>) {
     const payload: Record<string, unknown> = {};
-    if (updates.title_ar !== undefined) {
-      payload.name = updates.title_ar;
-      payload.title_ar = updates.title_ar;
-    }
-    if (updates.title_en !== undefined) payload.title_en = updates.title_en;
+    if (updates.title_ar !== undefined) payload.name_ar = updates.title_ar;
+    if (updates.title_en !== undefined) payload.name_en = updates.title_en;
     if (updates.slug !== undefined) payload.slug = updates.slug;
-    if (updates.description_ar !== undefined) payload.description_ar = updates.description_ar;
-    if (updates.description_en !== undefined) payload.description_en = updates.description_en;
-    if (updates.sort_order !== undefined) payload.sort_order = updates.sort_order;
     
     const { data, error } = await supabase
       .from('categories')
