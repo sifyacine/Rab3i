@@ -2,7 +2,28 @@
 
 This repo is a **React 18 + Vite + TypeScript** app with **Tailwind + shadcn/ui** and a **Supabase** backend (Auth + Postgres + Storage).
 
-## Golden rules (for agents)
+## Git & Deployment Workflow
+
+### Branches
+- **`dev`** — Working branch for all feature work and bugfixes
+- **`main`** — Production branch, auto-deployed to Netlify
+
+### Recommended Workflow
+
+| Step | Action | Why |
+|------|--------|-----|
+| 1 | Work on `dev` branch | Local testing |
+| 2 | Push to `origin/dev` | Triggers Netlify **preview** deploy (not production) |
+| 3 | Test on preview | Verify feature works |
+| 4 | Create PR `dev` → `main` | Netlify auto-detects PRs as preview deploys |
+| 5 | Merge PR | Netlify auto-deploys to production |
+
+### Why PRs over direct push
+- **Preview deploys**: Every PR gets its own Netlify URL for testing before production
+- **Safety**: Catch bugs on preview, not live site
+- **History**: Clean record of what went to production
+
+### Golden rules (for agents)
 
 - Work on the **`dev`** branch only. **Never push directly to `main`.** The `main` branch is live on Netlify; the user will explicitly say when to merge/push to `main`, or will do it themselves.
 - Prefer **small, reversible diffs**. Avoid broad refactors unless explicitly requested.
