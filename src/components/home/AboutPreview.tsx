@@ -79,11 +79,34 @@ const AboutPreview = () => (
           <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
             <Heart size={24} />
           </div>
-          <h3 className="text-lg font-bold text-foreground mb-2">قيمنا</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            الشراكة قبل الخدمة — الوضوح والشفافية — النظام قبل الضجة —
-            القرار المشترك — الجودة فوق الكمية
-          </p>
+          <h3 className="text-lg font-bold text-foreground mb-4">قيمنا</h3>
+          <div className="space-y-4 text-sm text-muted-foreground text-start">
+            <div>
+              <span className="text-primary font-bold">1 — </span>
+              <span className="font-semibold text-foreground">الشراكة قبل الخدمة</span>
+              <p className="mt-1">نقيس نجاحنا بمدى اندماجنا داخل فريق العميل.</p>
+            </div>
+            <div>
+              <span className="text-primary font-bold">2 — </span>
+              <span className="font-semibold text-foreground">الوضوح والشفافية</span>
+              <p className="mt-1">نقدم أرقام وحقائق، مو وعود فضفاضة.</p>
+            </div>
+            <div>
+              <span className="text-primary font-bold">3 — </span>
+              <span className="font-semibold text-foreground">النظام قبل الضجة</span>
+              <p className="mt-1">النمو الحقيقي يبدأ ببناء أساس قوي.</p>
+            </div>
+            <div>
+              <span className="text-primary font-bold">4 — </span>
+              <span className="font-semibold text-foreground">القرار المشترك</span>
+              <p className="mt-1">نؤمن أن أفضل النتائج تأتي من الحوار، مو من الإملاء.</p>
+            </div>
+            <div>
+              <span className="text-primary font-bold">5 — </span>
+              <span className="font-semibold text-foreground">الجودة فوق الكمية</span>
+              <p className="mt-1">نختار مشاريع نقدر نصنع فيها فرق حقيقي.</p>
+            </div>
+          </div>
         </ScrollReveal>
       </div>
 
