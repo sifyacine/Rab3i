@@ -6,8 +6,7 @@ export const servicesService = {
     let query = supabase
       .from('services')
       .select('*')
-      .order('sort_order', { ascending: true })
-      .order('title_ar', { ascending: true });
+      .order('sort_order', { ascending: true });
     
     if (activeOnly) {
       query = query.eq('is_active', true);

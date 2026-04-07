@@ -6,10 +6,12 @@ export const categoryService = {
     const { data, error } = await supabase
       .from('categories')
       .select('*')
-      .order('sort_order', { ascending: true })
-      .order('title_ar');
-       
-    if (error) throw error;
+      .order('sort_order', { ascending: true });
+        
+    if (error) {
+      console.error('getCategories error:', error);
+      throw error;
+    }
     return data as Category[];
   },
 
