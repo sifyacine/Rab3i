@@ -13,6 +13,9 @@ const Footer = () => (
           <p className="text-sm leading-relaxed text-muted-foreground">
             الشريك الإبداعي اللي تساعدك على إيصال رسائلك بشكل إبداعي يبني تصوّر ويحقق هدف
           </p>
+          <p className="text-sm font-semibold text-gradient mt-4">
+            رُبْعي — حيث يصبح التسويق جزءًا من الفريق
+          </p>
         </div>
 
         {/* Quick links */}

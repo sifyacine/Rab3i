@@ -57,7 +57,7 @@ const HeroSection = () => {
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         >
           <span className="mb-6 inline-block rounded-full border border-primary/30 bg-primary/10 px-5 py-2 text-xs font-medium text-primary">
-            الشريك الإبداعي لنجاح مشروعك
+            شريكك في المجلس… وقسمك الرابع في السوق
           </span>
         </motion.div>
 
@@ -65,24 +65,23 @@ const HeroSection = () => {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-          className="mx-auto mb-6 max-w-4xl text-3xl font-bold leading-[1.3] tracking-tight text-foreground sm:text-4xl md:text-5xl lg:text-6xl"
+          className="mx-auto mb-6 max-w-4xl text-4xl font-bold leading-[1.3] tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl"
           style={{ textWrap: "balance" }}
         >
-          وصّل رسالتك
+          رُبْعي
           <br />
-          <span className="text-gradient">بإبداع يحقق هدفك</span>
+          <span className="text-gradient">شريكك في المجلس… وقسمك الرابع في السوق</span>
         </motion.h1>
 
         <motion.p
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          className="mx-auto mb-10 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base"
+          className="mx-auto mb-10 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
           style={{ textWrap: "pretty" }}
         >
-          مو صعب تطلق حملة، ولكن مو أي حملة تأثر وتحقق هدفك.
-          <br className="hidden sm:block" />
-          ربيعي هي الشريك اللي يبني تصوّر ويوصل رسالتك بشكل مختلف
+          في رُبْعي نشتغل معك كأننا جزء من فريقك.
+          نجلس في المجلس، نفهم مشروعك، ونبني تسويق يخدم النمو الحقيقي — مو مجرد حملات.
         </motion.p>
 
         <motion.div
@@ -95,15 +94,15 @@ const HeroSection = () => {
             to="/request"
             className="group flex items-center gap-2 rounded-xl bg-gradient-brand px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 active:scale-[0.97]"
           >
-            ابدأ مشروعك
+            خلنا نجلس معاً
             <ArrowLeft size={16} className="transition-transform duration-300 group-hover:-translate-x-1" />
           </Link>
           <Link
-            to="/portfolio"
+            to="/about"
             className="group flex items-center gap-2 rounded-xl border border-border/50 bg-secondary/50 px-8 py-3.5 text-sm font-semibold text-foreground/90 transition-all duration-300 hover:border-primary/30 hover:bg-secondary active:scale-[0.97]"
           >
+            تعرّف علينا أكثر
             <Play size={14} className="text-primary" />
-            شاهد أعمالنا
           </Link>
         </motion.div>
       </div>

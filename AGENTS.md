@@ -56,10 +56,18 @@ npm run lint
 
 ## Supabase requirements
 
+### Project
+- **Project Ref**: `eyqgjpqnliagofjivisd`
+- **Region**: West EU (Ireland)
+- **MCP**: Local config in `opencode.json` (project-scoped, not global)
+  - To authenticate: `opencode mcp auth supabase`
+  - Tools available: `supabase_*` (list_tables, execute_sql, apply_migration, etc.)
+
 Required env vars (Vite):
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+- `VITE_APP_URL` (for email redirects, e.g., `https://rab3i.netlify.app`)
 
 Supabase client:
 
