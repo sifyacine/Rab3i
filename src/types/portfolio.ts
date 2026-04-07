@@ -2,8 +2,13 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
-  title_ar: string;
-  title_en: string;
+  title_ar: string | null;
+  title_en: string | null;
+  description_ar: string | null;
+  description_en: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
 }
 
 export interface Service {
@@ -65,6 +70,9 @@ export interface CreateCategoryDTO {
   slug: string;
   title_ar: string;
   title_en: string;
+  description_ar?: string;
+  description_en?: string;
+  sort_order?: number;
 }
 
 export interface CreateServiceDTO {

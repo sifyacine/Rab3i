@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
@@ -8,16 +8,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Only create the client if we have valid credentials to avoid crashes
-export const supabase = (supabaseUrl && supabaseAnonKey)
+export const supabase: SupabaseClient | null = (supabaseUrl && supabaseAnonKey)
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-
       }
     })
-  : (null as any); // Fallback to null; AuthContext and other components will need to handle this
+  : null;
 
 /**
  * Validates and refreshes the current session.

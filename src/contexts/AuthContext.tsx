@@ -5,6 +5,26 @@ import { needsRoleRefresh } from "@/lib/authSession";
 
 type UserRole = "admin" | "client";
 
+const AUTH_ASYNC_TIMEOUT_MS = 8000;
+
+const withTimeout = <T,>(promise: PromiseLike<T>, timeoutMs: number, label: string): Promise<T> => {
+  return new Promise<T>((resolve, reject) => {
+    const timerId = setTimeout(() => {
+      reject(new Error(`[Auth] ${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    Promise.resolve(promise)
+      .then((value) => {
+        clearTimeout(timerId);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timerId);
+        reject(error);
+      });
+  });
+};
+
 const normalizeRole = (value: unknown): UserRole | null => {
   if (value === "admin" || value === "client") return value;
   return null;
@@ -43,11 +63,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const resolveRole = useCallback(async (userId: string, metadataRole?: unknown): Promise<UserRole> => {
     if (!supabase) return "client";
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", userId)
-        .single();
+      const { data, error } = await withTimeout(
+        supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", userId)
+          .single(),
+        AUTH_ASYNC_TIMEOUT_MS,
+        "profiles role lookup"
+      );
 
       if (!error && data?.role) {
         return normalizeRole(data.role) ?? "client";
@@ -60,7 +84,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Final fallback to live auth user metadata (if same user)
       const {
         data: { user: authUser },
-      } = await supabase.auth.getUser();
+      } = await withTimeout(
+        supabase.auth.getUser(),
+        AUTH_ASYNC_TIMEOUT_MS,
+        "auth user lookup"
+      );
 
       if (authUser?.id === userId) {
         return normalizeRole(authUser.user_metadata?.role) ?? "client";
@@ -83,7 +111,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const initAuth = async () => {
       try {
-        const { data: { session: storedSession } } = await supabase.auth.getSession();
+        const {
+          data: { session: storedSession },
+        } = await supabase.auth.getSession();
         if (!isMounted) return;
 
         if (storedSession?.user) {
@@ -114,16 +144,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           currentUserIdRef.current = null;
         }
       } finally {
-        if (isMounted) setBootstrapping(false);
+        setBootstrapping(false);
       }
     };
 
     initAuth();
 
+    // Supabase fires INITIAL_SESSION on client init - handled by initAuth() to avoid race conditions.
+    // TypeScript doesn't know about INITIAL_SESSION but it's a real event.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!isMounted) return;
 
-      if (event === "INITIAL_SESSION") return; // handled by initAuth
+      if ((event as string) === "INITIAL_SESSION") return;
 
       if (newSession?.user) {
         setSession(newSession);
@@ -156,9 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setRole(resolvedRole);
             }
           } finally {
-            if (isMounted && roleResolveSeqRef.current === requestSeq) {
-              setResolvingRole(false);
-            }
+            setResolvingRole(false);
           }
         }
       } else {

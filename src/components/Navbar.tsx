@@ -107,7 +107,7 @@ const Navbar = () => {
             ))}
 
             {/* User Status / Auth Buttons */}
-            {loading ? null : user ? (
+            {user ? (
               <div className="flex items-center gap-3">
                 {role === "admin" ? (
                   <Link
@@ -136,6 +136,12 @@ const Navbar = () => {
               </div>
             ) : (
               <>
+                <Link
+                  to="/signup"
+                  className="text-sm font-medium text-foreground/70 transition-colors hover:text-primary"
+                >
+                  إنشاء حساب
+                </Link>
                 <Link
                   to="/login"
                   className="text-sm font-medium text-foreground/70 transition-colors hover:text-primary"
@@ -234,6 +240,12 @@ const Navbar = () => {
                 </>
               ) : (
                 <>
+                  <Link
+                    to="/signup"
+                    className="text-lg font-medium text-foreground/80 hover:text-primary transition-colors"
+                  >
+                    إنشاء حساب
+                  </Link>
                   <Link
                     to="/login"
                     className="text-lg font-medium text-foreground/80 hover:text-primary transition-colors"

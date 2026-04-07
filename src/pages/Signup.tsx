@@ -1,19 +1,48 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, User, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { buildAuthRedirectUrl } from "@/lib/authRedirect";
+import { getSignupErrorMessage } from "@/lib/authErrors";
+import { isExistingUnconfirmedSignup } from "@/lib/authSignupOutcome";
 
-const getErrorMessage = (error: unknown, fallback: string): string => {
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim()) {
-      return message;
+const AUTH_REQUEST_TIMEOUT_MS = 15000;
+
+const withAuthTimeout = async <T,>(promise: Promise<T>, timeoutMessage: string): Promise<T> => {
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, AUTH_REQUEST_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
     }
   }
-  return fallback;
+};
+
+type SignupUser = {
+  user_metadata?: {
+    role?: "admin" | "client";
+  };
+  identities?: unknown[] | null;
+};
+
+type SignupAuthResult = {
+  data: {
+    user: SignupUser | null;
+    session: object | null;
+  };
+  error: {
+    message: string;
+  } | null;
 };
 
 const Signup = () => {
@@ -32,41 +61,67 @@ const Signup = () => {
       return;
     }
 
+    if (!supabase) {
+      toast.error("الخدمة غير متاحة حالياً");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      if (!supabase) {
-        toast.error("الخدمة غير متاحة حالياً");
+
+      const { data, error } = await withAuthTimeout<SignupAuthResult>(
+        supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+              phone: phone,
+            },
+            emailRedirectTo: buildAuthRedirectUrl("/"),
+          },
+        }),
+        "SIGNUP_TIMEOUT"
+      );
+
+      if (error) {
+        toast.error(getSignupErrorMessage(error.message));
         return;
       }
 
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            phone: phone,
-          },
-          emailRedirectTo: buildAuthRedirectUrl("/"),
-        },
-      });
-
-      if (error) {
-        toast.error(error.message || "خطأ في إنشاء الحساب");
-        throw error;
+      if (isExistingUnconfirmedSignup(data)) {
+        toast.error("هذا البريد الإلكتروني مسجل مسبقاً وغير مؤكد. تحقق من بريدك أو أعد تعيين كلمة المرور.");
+        return;
       }
 
-      if (data.user) {
-        toast.success("تم إنشاء الحساب بنجاح! يرجى التحقق من بريدك الإلكتروني لتنشيط الحساب.");
-        navigate("/login");
+      if (!data.user) {
+        toast.error("تعذر إنشاء الحساب حالياً، يرجى المحاولة مجدداً");
+        return;
       }
-      } catch (err: unknown) {
-        console.error("Signup Error:", err);
-        toast.error(getErrorMessage(err, "خطأ في إنشاء الحساب"));
-      } finally {
-        setLoading(false);
+
+      const hasImmediateSession = Boolean(data.session);
+
+      if (hasImmediateSession) {
+        const userRole = data.user.user_metadata?.role;
+        const destination = userRole === "admin" ? "/admin" : "/portal";
+
+        toast.success("تم إنشاء الحساب وتسجيل الدخول بنجاح");
+        navigate(destination, { replace: true });
+        return;
       }
+
+      toast.success("تم إنشاء الحساب بنجاح! يرجى التحقق من بريدك الإلكتروني لتنشيط الحساب.");
+      navigate("/login", { replace: true });
+    } catch (error) {
+      if (error instanceof Error && error.message === "SIGNUP_TIMEOUT") {
+        toast.error("استغرقت العملية وقتاً طويلاً. تحقق من الاتصال وحاول مرة أخرى.");
+      } else {
+        toast.error("تعذر إنشاء الحساب حالياً، يرجى المحاولة مجدداً");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -91,62 +146,80 @@ const Signup = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-foreground/80">الاسم الكامل</label>
+              <label htmlFor="signup-full-name" className="mb-1.5 block text-xs font-medium text-foreground/80">الاسم الكامل</label>
               <div className="relative">
                 <User size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
+                  id="signup-full-name"
+                  name="fullName"
+                  autoComplete="name"
                   type="text"
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-2.5 pr-10 pl-4 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-2.5 pr-10 pl-4 text-sm text-slate-900 outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 placeholder:text-slate-500"
                   placeholder="الاسم الثلاثي"
                 />
               </div>
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-foreground/80">البريد الإلكتروني</label>
+              <label htmlFor="signup-email" className="mb-1.5 block text-xs font-medium text-foreground/80">البريد الإلكتروني</label>
               <div className="relative">
                 <Mail size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
+                  id="signup-email"
+                  name="email"
+                  autoComplete="email"
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-2.5 pr-10 pl-4 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-2.5 pr-10 pl-4 text-sm text-slate-900 outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 placeholder:text-slate-500"
                   placeholder="name@example.com"
                 />
               </div>
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-foreground/80">رقم الجوال (اختياري)</label>
+              <label htmlFor="signup-phone" className="mb-1.5 block text-xs font-medium text-foreground/80">رقم الجوال (اختياري)</label>
               <div className="relative">
                 <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
+                  id="signup-phone"
+                  name="phone"
+                  autoComplete="tel"
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-2.5 pr-10 pl-4 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-2.5 pr-10 pl-4 text-sm text-slate-900 outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 placeholder:text-slate-500"
                   placeholder="05xxxxxxxx"
                 />
               </div>
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-foreground/80">كلمة المرور</label>
+              <label htmlFor="signup-password" className="mb-1.5 block text-xs font-medium text-foreground/80">كلمة المرور</label>
               <div className="relative">
                 <Lock size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
+                  id="signup-password"
+                  name="password"
+                  autoComplete="new-password"
                   type={showPass ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-2.5 pr-10 pl-10 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-2.5 pr-10 pl-10 text-sm text-slate-900 outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 placeholder:text-slate-500"
                   placeholder="••••••••"
+                  style={{ WebkitTextSecurity: showPass ? "none" : "disc" } as CSSProperties}
                 />
-                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  aria-label={showPass ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
@@ -158,7 +231,10 @@ const Signup = () => {
               className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-brand py-3 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 active:scale-[0.97] disabled:opacity-60"
             >
               {loading ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                <>
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  <span>جارٍ إنشاء الحساب...</span>
+                </>
               ) : (
                 <>
                   إنشاء الحساب

@@ -1,0 +1,1 @@
+ts=2026-04-07T12:49:03.374Z type=decision scope=project content="AuthContext session fix complete: INITIAL_SESSION race condition fixed (line 158 skips event), flowType:'pkce' removed from Supabase client, getSession timeout removed. Build passes, 47/47 tests pass." tags=auth,fix,verified

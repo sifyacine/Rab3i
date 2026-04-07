@@ -1,10 +1,45 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
+import { getLoginErrorMessage } from "@/lib/authErrors";
+
+const AUTH_REQUEST_TIMEOUT_MS = 15000;
+
+const withAuthTimeout = async <T,>(promise: Promise<T>, timeoutMessage: string): Promise<T> => {
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, AUTH_REQUEST_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+  }
+};
+
+type LoginAuthResult = {
+  data: {
+    user: {
+      id: string;
+      user_metadata?: {
+        role?: "admin" | "client";
+      };
+    } | null;
+  };
+  error: {
+    message: string;
+  } | null;
+};
 
 const Login = () => {
   const navigate = useNavigate();
@@ -33,24 +68,16 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await withAuthTimeout<LoginAuthResult>(
+        supabase.auth.signInWithPassword({
+          email,
+          password,
+        }),
+        "LOGIN_TIMEOUT"
+      );
 
       if (error) {
-        const msg = error.message.toLowerCase();
-        let errorMsg = "خطأ في تسجيل الدخول";
-
-        if (msg.includes("invalid login credentials")) {
-          errorMsg = "البريد الإلكتروني أو كلمة المرور غير صحيحة";
-        } else if (msg.includes("email not confirmed")) {
-          errorMsg = "يرجى تأكيد البريد الإلكتروني الخاص بك";
-        } else if (msg.includes("rate limit")) {
-          errorMsg = "لقد تجاوزت الحد المسموح به من المحاولات، يرجى المحاولة لاحقاً";
-        }
-
-        toast.error(errorMsg);
+        toast.error(getLoginErrorMessage(error.message));
         return;
       }
 
@@ -71,8 +98,12 @@ const Login = () => {
       const role = profile?.role ?? data.user.user_metadata?.role ?? "client";
 
       navigate(from ?? (role === "admin" ? "/admin" : "/portal"), { replace: true });
-    } catch {
-      toast.error("حدث خطأ غير متوقع، يرجى المحاولة مجدداً");
+    } catch (error) {
+      if (error instanceof Error && error.message === "LOGIN_TIMEOUT") {
+        toast.error("استغرقت العملية وقتاً طويلاً. تحقق من الاتصال وحاول مرة أخرى.");
+      } else {
+        toast.error("حدث خطأ غير متوقع، يرجى المحاولة مجدداً");
+      }
     } finally {
       setLoading(false);
     }
@@ -100,15 +131,18 @@ const Login = () => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="mb-2 block text-sm font-medium text-foreground/80">البريد الإلكتروني</label>
+              <label htmlFor="login-email" className="mb-2 block text-sm font-medium text-foreground/80">البريد الإلكتروني</label>
               <div className="relative">
                 <Mail size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
+                  id="login-email"
+                  name="email"
+                  autoComplete="email"
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-3 pr-10 pl-4 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-3 pr-10 pl-4 text-sm text-slate-900 outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 placeholder:text-slate-500"
                   placeholder="name@example.com"
                 />
               </div>
@@ -116,7 +150,7 @@ const Login = () => {
 
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <label className="block text-sm font-medium text-foreground/80">كلمة المرور</label>
+                <label htmlFor="login-password" className="block text-sm font-medium text-foreground/80">كلمة المرور</label>
                 <Link 
                   to="/forgot-password"
                   className="text-xs text-primary hover:underline transition-all"
@@ -127,14 +161,23 @@ const Login = () => {
               <div className="relative">
                 <Lock size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
+                  id="login-password"
+                  name="password"
+                  autoComplete="current-password"
                   type={showPass ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-3 pr-10 pl-10 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/50"
-                  placeholder="••••••••"
+                  style={{ WebkitTextSecurity: showPass ? "none" : "disc" } as CSSProperties}
+                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-3 pr-10 pl-10 text-sm text-slate-900 outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 placeholder:text-slate-500"
+                  placeholder={showPass ? "أدخل كلمة المرور" : "••••••••"}
                 />
-                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  aria-label={showPass ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
@@ -146,7 +189,10 @@ const Login = () => {
               className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-brand py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 active:scale-[0.97] disabled:opacity-60"
             >
               {loading ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                <>
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  <span>جارٍ تسجيل الدخول...</span>
+                </>
               ) : (
                 <>
                   تسجيل الدخول
@@ -171,4 +217,3 @@ const Login = () => {
 };
 
 export default Login;
-
