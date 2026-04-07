@@ -72,12 +72,22 @@ export const projectsService = {
 
 
   async createProject(project: CreateProjectDTO) {
+    const payload = {
+      title_ar: project.title,
+      title_en: project.title,
+      slug: project.slug,
+      description_ar: project.description,
+      description_en: project.description,
+      cover_image: project.cover_image,
+      category_id: project.category_id,
+      is_published: project.is_published,
+    };
     const { data, error } = await supabase
       .from('projects')
-      .insert([project])
+      .insert([payload])
       .select()
       .single();
-      
+       
     if (error) throw error;
     return data as Project;
   },
