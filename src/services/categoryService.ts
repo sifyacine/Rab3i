@@ -12,7 +12,16 @@ export const categoryService = {
       console.error('getCategories error:', error);
       throw error;
     }
-    return data as Category[];
+    // Map DB fields (name_ar/name_en) to TypeScript fields (title_ar/title_en)
+    return (data ?? []).map(cat => ({
+      id: cat.id,
+      name_ar: cat.name_ar,
+      name_en: cat.name_en,
+      slug: cat.slug,
+      title_ar: cat.name_ar,
+      title_en: cat.name_en,
+      created_at: cat.created_at,
+    }));
   },
 
   async createCategory(category: CreateCategoryDTO) {
