@@ -12,7 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
 const Settings = () => {
-  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
+  const [theme, setTheme] = useState(() => localStorage.getItem("rabii-theme") || "dark");
   const queryClient = useQueryClient();
   
   const [socialLinks, setSocialLinks] = useState({
@@ -66,7 +66,7 @@ const Settings = () => {
     } else {
       root.classList.remove("light");
     }
-    localStorage.setItem("theme", theme);
+    localStorage.setItem("rabii-theme", theme);
   }, [theme]);
 
   const handleSave = () => {

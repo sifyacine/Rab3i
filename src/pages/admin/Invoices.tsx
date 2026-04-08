@@ -18,41 +18,49 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-
-interface Invoice {
-  id: string;
-  client: string;
-  amount: string;
-  status: "paid" | "unpaid" | "overdue" | "canceled";
-  date: string;
-  dueDate: string;
-  clientEmail: string;
-}
-
-const mockInvoices: Invoice[] = [
-  { id: "INV-001", client: "ياسين سيف", amount: "5000", status: "paid", date: "2024-03-21", dueDate: "2024-03-30", clientEmail: "yacine@example.com" },
-  { id: "INV-002", client: "عبدالله محمد", amount: "1200", status: "unpaid", date: "2024-03-20", dueDate: "2024-04-10", clientEmail: "abdullah@example.com" },
-  { id: "INV-003", client: "سارة الأحمد", amount: "850", status: "paid", date: "2024-03-15", dueDate: "2024-03-25", clientEmail: "sara@example.com" },
-];
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { invoicesService, Invoice } from "@/services/invoicesService";
 
 const InvoicesAdmin = () => {
   const navigate = useNavigate();
-  const [invoices, setInvoices] = useState<Invoice[]>(mockInvoices);
+  const queryClient = useQueryClient();
   const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
+  const { data: invoices = [], isLoading } = useQuery({
+    queryKey: ["invoices"],
+    queryFn: () => invoicesService.getInvoices()
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => invoicesService.deleteInvoice(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("تم حذف الفاتورة بنجاح");
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحذف")
+  });
+
   const confirmDelete = () => {
     if (invoiceToDelete) {
-      setInvoices(invoices.filter(i => i.id !== invoiceToDelete));
-      toast.success("تم حذف الفاتورة بنجاح");
+      deleteMutation.mutate(invoiceToDelete);
       setInvoiceToDelete(null);
     }
   };
 
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('ar-SA');
+  };
+
   const columns = [
-    { header: "العميل", accessorKey: "client" as const },
-    { header: "المبلغ", accessorKey: "amount" as const },
+    { header: "العميل", accessorKey: "customer_name" as const },
+    { 
+      header: "المبلغ", 
+      accessorKey: "total" as const,
+      cell: (item: Invoice) => <span>⃁ {item.total.toLocaleString()}</span>
+    },
     {
       header: "الحالة",
       accessorKey: "status" as const,
@@ -76,7 +84,11 @@ const InvoicesAdmin = () => {
         </Badge>
       ),
     },
-    { header: "التاريخ", accessorKey: "date" as const },
+    { 
+      header: "التاريخ", 
+      accessorKey: "created_at" as const,
+      cell: (item: Invoice) => formatDate(item.created_at)
+    },
   ];
 
   return (
@@ -85,8 +97,9 @@ const InvoicesAdmin = () => {
       <SmartDataTable
         data={invoices}
         columns={columns}
-        cardTitle={(i) => i.client}
-        cardSubtitle={(i) => i.amount}
+        isLoading={isLoading}
+        cardTitle={(i) => i.customer_name}
+        cardSubtitle={(i) => <span>⃁ {i.total.toLocaleString()}</span>}
         onAdd={() => navigate("/admin/invoices/new")}
         onRowClick={(i) => navigate(`/admin/invoices/${i.id}`)}
         actions={(item) => (
@@ -149,15 +162,15 @@ const InvoicesAdmin = () => {
         onOpenChange={setIsPreviewOpen}
         invoice={selectedInvoice ? {
           id: selectedInvoice.id,
-          clientName: selectedInvoice.client,
-          clientEmail: selectedInvoice.clientEmail,
-          amount: parseFloat(selectedInvoice.amount),
+          clientName: selectedInvoice.customer_name,
+          clientEmail: selectedInvoice.customer_phone || "",
+          amount: selectedInvoice.total,
           currency: "SAR",
           status: selectedInvoice.status,
-          date: selectedInvoice.date,
-          dueDate: selectedInvoice.dueDate,
+          date: selectedInvoice.created_at,
+          dueDate: selectedInvoice.created_at,
           items: [
-            { description: "خدمات تصميم وتطوير متكاملة", quantity: 1, price: parseFloat(selectedInvoice.amount) }
+            { description: "خدمات تصميم وتطوير متكاملة", quantity: 1, price: selectedInvoice.total }
           ]
         } : null}
       />

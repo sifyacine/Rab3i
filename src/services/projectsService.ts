@@ -113,9 +113,27 @@ export const projectsService = {
     if (error) throw error;
   },
 
-  async incrementViews(id: string) {
-    const { error } = await supabase.rpc('increment_project_views', { project_id: id });
-    if (error) throw error;
+  async incrementViews(id: string, ipAddress?: string) {
+    // Use IP-based counting if available, otherwise fall back to simple increment
+    if (ipAddress) {
+      const { data, error } = await supabase.rpc('increment_project_views_safe', { 
+        project_id_param: id, 
+        ip_address_param: ipAddress 
+      });
+      if (error) {
+        console.warn('IP-based view tracking failed, using simple count:', error);
+        // Fallback: just increment views column
+        const { data: project } = await supabase.from('projects').select('views').eq('id', id).single();
+        await supabase.from('projects').update({ views: (project?.views || 0) + 1 }).eq('id', id);
+      }
+      return data;
+    } else {
+      // No IP provided - simple increment
+      const { data: project } = await supabase.from('projects').select('views').eq('id', id).single();
+      const newViews = (project?.views || 0) + 1;
+      await supabase.from('projects').update({ views: newViews }).eq('id', id);
+      return newViews;
+    }
   },
 
   async getProjectStats() {

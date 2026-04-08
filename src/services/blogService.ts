@@ -126,7 +126,7 @@ export const blogService = {
     return data as BlogPost;
   },
 
-  async getBlogPostBySlug(slug: string): Promise<BlogPost> {
+  async getBlogPostBySlug(slug: string, ipAddress?: string): Promise<BlogPost> {
     const { data, error } = await supabase
       .from('blog_posts')
       .select('*')
@@ -135,11 +135,24 @@ export const blogService = {
 
     if (error) throw error;
 
-    // Race-safe view increment: optimistic locking with compare-and-set
-    // Retry once if first attempt didn't match (concurrent update)
-    await this._incrementViewsSafely(data.id, data.views);
+    if (ipAddress) {
+      await this.incrementViewsWithIP(data.id, ipAddress);
+    } else {
+      await this._incrementViewsSafely(data.id, data.views);
+    }
 
     return data as BlogPost;
+  },
+
+  async incrementViewsWithIP(postId: string, ipAddress: string) {
+    const { data, error } = await supabase.rpc('increment_blog_views_safe', { 
+      post_id_param: postId, 
+      ip_address_param: ipAddress 
+    });
+    if (error) {
+      console.warn('IP-based blog view tracking failed:', error);
+    }
+    return data;
   },
 
   /**

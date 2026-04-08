@@ -5,14 +5,21 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ScrollReveal from "@/components/ScrollReveal";
 import { blogService } from "@/services/blogService";
+import { getClientIP } from "@/lib/getClientIP";
+import { useEffect } from "react";
 
 const BlogDetail = () => {
   const { slug } = useParams();
 
-  // Fetch blog post by slug
+  const fetchPost = async () => {
+    if (!slug) return null;
+    const ip = await getClientIP();
+    return blogService.getBlogPostBySlug(slug, ip ?? undefined);
+  };
+
   const { data: post, isLoading, error } = useQuery({
     queryKey: ["blog-detail", slug],
-    queryFn: () => (slug ? blogService.getBlogPostBySlug(slug) : null),
+    queryFn: fetchPost,
     enabled: !!slug,
   });
 

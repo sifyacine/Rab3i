@@ -1,8 +1,8 @@
 import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Briefcase, FileText, Settings, Users,
-  MessageSquare, Star, Building2, LogOut, PanelRight
+  MessageSquare, Star, Building2, LogOut, PanelRight, Sun, Moon
 } from "lucide-react";
 import {
   SidebarProvider, Sidebar, SidebarContent, SidebarHeader,
@@ -33,10 +33,35 @@ function AdminSidebar() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { refreshData } = useRefresh();
+  const [isLight, setIsLight] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("rabii-theme") === "light";
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const saved = localStorage.getItem("rabii-theme");
+    if (saved === "light") {
+      document.documentElement.classList.add("light");
+      setIsLight(true);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newIsLight = !isLight;
+    setIsLight(newIsLight);
+    if (newIsLight) {
+      document.documentElement.classList.add("light");
+      localStorage.setItem("rabii-theme", "light");
+    } else {
+      document.documentElement.classList.remove("light");
+      localStorage.setItem("rabii-theme", "dark");
+    }
+  };
 
   const handleNavigation = (url: string) => {
     navigate(url);
-    // Soft refresh after navigation
     setTimeout(() => refreshData(), 100);
   };
 
@@ -87,6 +112,12 @@ function AdminSidebar() {
 
       <SidebarFooter className="border-t border-border/40 p-3">
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={toggleTheme} tooltip={isLight ? "الوضع الداكن" : "الوضع الفاتح"}>
+              {isLight ? <Moon className={state === "collapsed" ? "h-8 w-8" : "h-4 w-4"} /> : <Sun className={state === "collapsed" ? "h-8 w-8" : "h-4 w-4"} />}
+              <span>{isLight ? "الوضع الداكن" : "الوضع الفاتح"}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={handleLogout} tooltip="تسجيل الخروج">
               <LogOut className={state === "collapsed" ? "h-8 w-8" : "h-4 w-4"} />

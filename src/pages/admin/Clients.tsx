@@ -17,30 +17,32 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  company: string;
-  projectsCount: number;
-}
-
-const mockClients: Client[] = [
-  { id: "1", name: "عبدالله محمد", email: "abdullah@example.com", company: "النبراس العقارية", projectsCount: 2 },
-  { id: "2", name: "سارة الأحمد", email: "sara@test.com", company: "ستوديو فنون", projectsCount: 1 },
-  { id: "3", name: "خالد سعيد", email: "khaled@corp.com", company: "شركة التوريدات", projectsCount: 3 },
-];
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { clientsService, Client } from "@/services/clientsService";
 
 const Clients = () => {
   const navigate = useNavigate();
-  const [clients, setClients] = useState<Client[]>(mockClients);
+  const queryClient = useQueryClient();
+  
+  const { data: clients = [], isLoading } = useQuery({
+    queryKey: ["clients"],
+    queryFn: () => clientsService.getClients()
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => clientsService.deleteClient(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      toast.success("تم حذف العميل بنجاح");
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحذف")
+  });
+
   const [clientToDelete, setClientToDelete] = useState<string | null>(null);
 
   const confirmDelete = () => {
     if (clientToDelete) {
-      setClients(clients.filter(c => c.id !== clientToDelete));
-      toast.success("تم حذف العميل بنجاح");
+      deleteMutation.mutate(clientToDelete);
       setClientToDelete(null);
     }
   };
@@ -60,7 +62,7 @@ const Clients = () => {
     },
     { header: "الشركة", accessorKey: "company" as const },
     { header: "البريد الإلكتروني", accessorKey: "email" as const },
-    { header: "المشاريع", accessorKey: "projectsCount" as const },
+    { header: "المشاريع", accessorKey: "projects_count" as const },
   ];
 
   return (
@@ -69,8 +71,9 @@ const Clients = () => {
       <SmartDataTable
         data={clients}
         columns={columns}
+        isLoading={isLoading}
         cardTitle={(c) => c.name}
-        cardSubtitle={(c) => c.company}
+        cardSubtitle={(c) => c.company ?? ""}
         onAdd={() => navigate("/admin/clients/new")}
         onRowClick={(c) => navigate(`/admin/clients/${c.id}`)}
         actions={(item) => (

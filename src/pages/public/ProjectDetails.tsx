@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ScrollReveal from "@/components/ScrollReveal";
 import { projectsService } from "@/services/projectsService";
+import { getClientIP } from "@/lib/getClientIP";
 import { useEffect } from "react";
 import NotFound from "../NotFound";
 
@@ -21,9 +22,9 @@ const ProjectDetails = () => {
   // Track views once loaded
   useEffect(() => {
     if (project?.id) {
-      // Small timeout to count only actual views, avoiding immediate bounces
-      const timer = setTimeout(() => {
-        projectsService.incrementViews(project.id).catch(console.error);
+      const timer = setTimeout(async () => {
+        const ip = await getClientIP();
+        projectsService.incrementViews(project.id, ip ?? undefined).catch(console.error);
       }, 3000);
       return () => clearTimeout(timer);
     }

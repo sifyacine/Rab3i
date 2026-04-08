@@ -31,12 +31,13 @@ interface SmartDataTableProps<T> {
   columns: Column<T>[];
   searchPlaceholder?: string;
   cardTitle: (item: T) => string;
-  cardSubtitle?: (item: T) => string;
+  cardSubtitle?: (item: T) => string | React.ReactNode;
   cardContent?: (item: T) => React.ReactNode;
   actions?: (item: T) => React.ReactNode;
   onAdd?: () => void;
   onRowClick?: (item: T) => void;
   addButtonLabel?: string;
+  isLoading?: boolean;
 }
 
 export function SmartDataTable<T extends { id: string | number }>({

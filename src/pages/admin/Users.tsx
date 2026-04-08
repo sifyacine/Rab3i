@@ -17,38 +17,47 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-
-interface AdminUser {
-  id: string;
-  username: string;
-  role: "admin" | "editor";
-  lastLogin: string;
-}
-
-const mockUsers: AdminUser[] = [
-  { id: "1", username: "admin_yassine", role: "admin", lastLogin: "2024-03-21 15:30" },
-  { id: "2", username: "editor_sara", role: "editor", lastLogin: "2024-03-20 09:15" },
-];
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { usersService, Profile } from "@/services/usersService";
 
 const Users = () => {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<AdminUser[]>(mockUsers);
+  const queryClient = useQueryClient();
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ["users"],
+    queryFn: () => usersService.getUsers()
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => usersService.deleteUser(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success("تم حذف المستخدم بنجاح");
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحذف")
+  });
 
   const confirmDelete = () => {
     if (userToDelete) {
-      setUsers(users.filter(u => u.id !== userToDelete));
-      toast.success("تم حذف المستخدم بنجاح");
+      deleteMutation.mutate(userToDelete);
       setUserToDelete(null);
     }
   };
 
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('ar-SA');
+  };
+
   const columns = [
-    { header: "اسم المستخدم", accessorKey: "username" as const },
+    { header: "البريد الإلكتروني", accessorKey: "email" as const },
+    { header: "الاسم", accessorKey: "full_name" as const },
     {
       header: "الدور",
       accessorKey: "role" as const,
-      cell: (item: AdminUser) => (
+      cell: (item: Profile) => (
         <Badge 
           variant={item.role === "admin" ? "default" : "secondary"}
           className={cn(
@@ -60,7 +69,11 @@ const Users = () => {
         </Badge>
       ),
     },
-    { header: "آخر دخول", accessorKey: "lastLogin" as const },
+    { 
+      header: "تاريخ الإنشاء", 
+      accessorKey: "created_at" as const,
+      cell: (item: Profile) => formatDate(item.created_at)
+    },
   ];
 
   return (
@@ -69,7 +82,8 @@ const Users = () => {
       <SmartDataTable
         data={users}
         columns={columns}
-        cardTitle={(u) => u.username}
+        isLoading={isLoading}
+        cardTitle={(u) => u.full_name || u.email}
         onAdd={() => navigate("/admin/users/new")}
         onRowClick={(u) => navigate(`/admin/users/${u.id}`)}
         actions={(item) => (
