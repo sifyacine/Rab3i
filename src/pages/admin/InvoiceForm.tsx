@@ -39,12 +39,12 @@ const InvoiceFormAdmin = () => {
         id: "1", 
         invoiceNumber: "INV-2024-001", 
         client: "ياسين سيف", 
-        amount: "5000$", 
+        amount: "5000 ⃁", 
         status: "paid", 
         dueDate: "2024-04-01",
         items: [
-          { title: "تطوير موقع الكتروني", price: "4000$" },
-          { title: "تصميم الهوية البصرية", price: "1000$" }
+          { title: "تطوير موقع الكتروني", price: "4000 ⃁" },
+          { title: "تصميم الهوية البصرية", price: "1000 ⃁" }
         ]
       });
     }
@@ -89,7 +89,7 @@ const InvoiceFormAdmin = () => {
                   </div>
                   <div className="w-32 space-y-2">
                     <Label>السعر</Label>
-                    <Input placeholder="500$" value={item.price} onChange={(e) => {
+                    <Input placeholder="500 ⃁" value={item.price} onChange={(e) => {
                       const newItems = [...formData.items];
                       newItems[index].price = e.target.value;
                       setFormData({...formData, items: newItems});

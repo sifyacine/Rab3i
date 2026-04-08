@@ -21,13 +21,13 @@ const InvoiceDetailsAdmin = () => {
     id: "1", 
     invoiceNumber: "INV-2024-001", 
     client: "ياسين سيف", 
-    amount: "5000$", 
+    amount: "5000 ⃁", 
     status: "paid", 
     dueDate: "2024-04-01",
     issueDate: "2024-03-20",
     items: [
-      { id: 1, title: "تطوير موقع الكتروني", price: "4000$" },
-      { id: 2, title: "تصميم الهوية البصرية", price: "1000$" }
+      { id: 1, title: "تطوير موقع الكتروني", price: "4000 ⃁" },
+      { id: 2, title: "تصميم الهوية البصرية", price: "1000 ⃁" }
     ]
   };
 
@@ -111,7 +111,7 @@ const InvoiceDetailsAdmin = () => {
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-border/20">
                   <span className="text-sm text-muted-foreground flex items-center gap-2"><DollarSign className="h-4 w-4" /> المبلغ المستلم</span>
-                  <span className="text-sm font-bold font-sans text-emerald-500">5000.00$</span>
+                  <span className="text-sm font-bold font-sans text-emerald-500">5000.00 ⃁</span>
                 </div>
               </div>
               <Button className="w-full gap-2" variant="secondary"><Share2 className="h-4 w-4" /> مشاركة الرابط مع العميل</Button>

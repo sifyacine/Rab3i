@@ -222,7 +222,7 @@ const ServiceFormAdmin = () => {
                     id="price_from"
                     value={form.price_from ?? ""}
                     onChange={e => setForm(f => ({ ...f, price_from: e.target.value }))}
-                    placeholder="e.g. 500$"
+                    placeholder="e.g. 500 ⃁"
                     dir="ltr"
                   />
                 </div>

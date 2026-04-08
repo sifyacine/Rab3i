@@ -142,7 +142,7 @@ const Login = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-3 pr-10 pl-4 text-sm text-slate-900 outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 placeholder:text-slate-500"
+                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-3 pr-10 pl-4 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground"
                   placeholder="name@example.com"
                 />
               </div>
@@ -169,7 +169,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   style={{ WebkitTextSecurity: showPass ? "none" : "disc" } as CSSProperties}
-                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-3 pr-10 pl-10 text-sm text-slate-900 outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 placeholder:text-slate-500"
+                  className="w-full rounded-xl border border-border/50 bg-secondary/50 py-3 pr-10 pl-10 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground"
                   placeholder={showPass ? "أدخل كلمة المرور" : "••••••••"}
                 />
                 <button
