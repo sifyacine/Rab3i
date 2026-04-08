@@ -17,38 +17,65 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { invoicesService } from "@/services/invoicesService";
 
 const InvoiceFormAdmin = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isEditing = !!id;
   
   const [formData, setFormData] = useState<any>({
-    invoiceNumber: "INV-2024-001",
-    client: "",
-    amount: "",
-    status: "pending",
+    invoiceNumber: "INV-" + Date.now(),
+    customer_name: "",
+    total: 0,
+    status: "unpaid",
     dueDate: new Date().toISOString().split('T')[0],
+    customer_phone: "",
+    payment_method: "",
     items: [{ title: "", price: "" }]
   });
 
+  // Fetch existing invoice when editing
+  const { data: existingInvoice } = useQuery({
+    queryKey: ["invoice", id],
+    queryFn: () => invoicesService.getInvoiceById(id!),
+    enabled: !!id
+  });
+
   useEffect(() => {
-    if (isEditing) {
-      // Mock data
+    if (existingInvoice) {
       setFormData({
-        id: "1", 
-        invoiceNumber: "INV-2024-001", 
-        client: "ياسين سيف", 
-        amount: "5000 ⃁", 
-        status: "paid", 
-        dueDate: "2024-04-01",
-        items: [
-          { title: "تطوير موقع الكتروني", price: "4000 ⃁" },
-          { title: "تصميم الهوية البصرية", price: "1000 ⃁" }
-        ]
+        ...existingInvoice,
+        items: [{ title: "خدمات التصميم والتطوير", price: existingInvoice.total.toString() }]
       });
     }
-  }, [id, isEditing]);
+  }, [existingInvoice]);
+
+  const createMutation = useMutation({
+    mutationFn: invoicesService.createInvoice,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("تم إنشاء الفاتورة بنجاح");
+      navigate("/admin/invoices");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "حدث خطأ أثناء إنشاء الفاتورة");
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => invoicesService.updateInvoice(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("تم تحديث الفاتورة بنجاح");
+      navigate("/admin/invoices");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "حدث خطأ أثناء تحديث الفاتورة");
+    }
+  });
 
   const addItem = () => {
     setFormData({...formData, items: [...formData.items, { title: "", price: "" }]});
@@ -58,9 +85,37 @@ const InvoiceFormAdmin = () => {
     setFormData({...formData, items: formData.items.filter((_: any, i: number) => i !== index)});
   };
 
+  const calculateTotal = () => {
+    return formData.items.reduce((sum: number, item: any) => {
+      const price = parseFloat(item.price) || 0;
+      return sum + price;
+    }, 0);
+  };
+
   const handleSave = () => {
-    toast.success(isEditing ? "تم تحديث الفاتورة" : "تم إنشاء الفاتورة بنجاح");
-    navigate("/admin/invoices");
+    const total = calculateTotal();
+    if (!formData.customer_name) {
+      toast.error("يرجى اختيار العميل");
+      return;
+    }
+    if (total <= 0) {
+      toast.error("يرجى إدخال بنود الفاتورة");
+      return;
+    }
+
+    const invoiceData = {
+      customer_name: formData.customer_name,
+      total: total,
+      status: formData.status,
+      customer_phone: formData.customer_phone || null,
+      payment_method: formData.payment_method || null
+    };
+
+    if (isEditing && id) {
+      updateMutation.mutate({ id, data: invoiceData });
+    } else {
+      createMutation.mutate(invoiceData);
+    }
   };
 
   return (
@@ -89,7 +144,7 @@ const InvoiceFormAdmin = () => {
                   </div>
                   <div className="w-32 space-y-2">
                     <Label>السعر</Label>
-                    <Input placeholder="500 ⃁" value={item.price} onChange={(e) => {
+                    <Input placeholder="500 ⃁" type="number" value={item.price} onChange={(e) => {
                       const newItems = [...formData.items];
                       newItems[index].price = e.target.value;
                       setFormData({...formData, items: newItems});
@@ -103,6 +158,9 @@ const InvoiceFormAdmin = () => {
               <Button variant="outline" className="w-full gap-2 border-dashed" onClick={addItem}>
                 <Plus className="h-4 w-4" /> إضافة بند جديد
               </Button>
+              <div className="flex justify-end pt-4 border-t">
+                <span className="text-lg font-bold">المجموع: ⃁ {calculateTotal().toLocaleString()}</span>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -122,14 +180,30 @@ const InvoiceFormAdmin = () => {
               </div>
               <div className="space-y-2">
                 <Label>العميل</Label>
-                <Select value={formData.client} onValueChange={(v) => setFormData({...formData, client: v})}>
-                  <SelectTrigger className="pr-10 relative">
-                    <User className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <SelectValue placeholder="اختر العميل" />
+                <Input 
+                  placeholder="اسم العميل" 
+                  value={formData.customer_name} 
+                  onChange={(e) => setFormData({...formData, customer_name: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>رقم الهاتف</Label>
+                <Input 
+                  placeholder="05xxxxxxxx" 
+                  value={formData.customer_phone} 
+                  onChange={(e) => setFormData({...formData, customer_phone: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>طريقة الدفع</Label>
+                <Select value={formData.payment_method} onValueChange={(v) => setFormData({...formData, payment_method: v})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر الطريقة" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ياسين سيف">ياسين سيف</SelectItem>
-                    <SelectItem value="عبدالله محمد">عبدالله محمد</SelectItem>
+                    <SelectItem value="bank_transfer">تحويل بنكي</SelectItem>
+                    <SelectItem value="cash">نقدي</SelectItem>
+                    <SelectItem value="card">بطاقة ائتمان</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -141,14 +215,11 @@ const InvoiceFormAdmin = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="paid">مدفوعة</SelectItem>
-                    <SelectItem value="pending">قيد الانتظار</SelectItem>
+                    <SelectItem value="unpaid">غير مدفوعة</SelectItem>
                     <SelectItem value="overdue">متأخرة</SelectItem>
+                    <SelectItem value="canceled">ملغاة</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>تاريخ الاستحقاق</Label>
-                <Input type="date" value={formData.dueDate} onChange={(e) => setFormData({...formData, dueDate: e.target.value})} />
               </div>
             </CardContent>
           </Card>
@@ -157,8 +228,12 @@ const InvoiceFormAdmin = () => {
 
       <div className="flex justify-end gap-3 pb-10">
         <Button variant="outline" asChild><Link to="/admin/invoices">إلغاء الأمر</Link></Button>
-        <Button onClick={handleSave} className="bg-gradient-brand gap-2 px-8 shadow-lg shadow-primary/20">
-          <Save size={18} /> إصدار الفاتورة
+        <Button 
+          onClick={handleSave} 
+          className="bg-gradient-brand gap-2 px-8 shadow-lg shadow-primary/20"
+          disabled={createMutation.isPending || updateMutation.isPending}
+        >
+          <Save size={18} /> {isEditing ? "تحديث الفاتورة" : "إصدار الفاتورة"}
         </Button>
       </div>
     </div>
