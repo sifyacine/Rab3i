@@ -6,10 +6,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Download, Printer, Globe, FileText, 
-  User, Calendar, Landmark, CreditCard 
+  Download, Printer, Globe, FileText 
 } from "lucide-react";
+import { PDFDownloadLink } from "@react-pdf/renderer";
 import { toast } from "sonner";
+import InvoicePDF from "./InvoicePDF";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 interface InvoiceData {
   id: string;
@@ -32,11 +35,27 @@ interface InvoicePreviewDialogProps {
 const InvoicePreviewDialog = ({ invoice, isOpen, onOpenChange }: InvoicePreviewDialogProps) => {
   const [lang, setLang] = useState<"ar" | "en">("ar");
 
-  if (!invoice) return null;
+  const { data: settings } = useQuery({
+    queryKey: ["store-settings"],
+    queryFn: async () => {
+      const { data } = await supabase.from("store_settings").select("*").limit(1).single();
+      return data;
+    },
+  });
 
-  const handleDownload = () => {
-    toast.success(lang === "ar" ? "جاري تحضير الفاتورة للتحميل..." : "Preparing invoice for download...");
+  const businessInfo = {
+    storeName: settings?.store_name || "شركة ربيعي",
+    storeAddress: settings?.address || "شارع التخصصي، حي المعذر، الرياض، المملكة العربية السعودية",
+    storePhone: settings?.phone || "+966 55 123 4567",
+    vatNumber: settings?.vat_number || "310000000000003",
+    taxNumber: settings?.tax_number || "310000000000003",
+    crNumber: settings?.cr_number || "1010123456",
+    bankName: settings?.bank_name || "البنك الأهلي السعودي",
+    bankIban: settings?.bank_iban || "SA80 1000 0000 0000 0000 0000",
+    bankAccountName: settings?.bank_account_name || "شركة ربيعي للتجارة"
   };
+
+  if (!invoice) return null;
 
   const handlePrint = () => {
     window.print();
@@ -216,10 +235,17 @@ const InvoicePreviewDialog = ({ invoice, isOpen, onOpenChange }: InvoicePreviewD
 
         <DialogFooter className="mt-6 gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>{content.close}</Button>
-          <Button onClick={handleDownload} className="gap-2">
-            <Download className="h-4 w-4" />
-            {content.download}
-          </Button>
+          <PDFDownloadLink
+            document={<InvoicePDF invoice={invoice} businessInfo={businessInfo} />}
+            fileName={`invoice-${invoice.id}.pdf`}
+          >
+            {({ loading }) => (
+              <Button className="gap-2" disabled={loading}>
+                <Download className="h-4 w-4" />
+                {loading ? (lang === "ar" ? "جاري التحميل..." : "Loading...") : content.download}
+              </Button>
+            )}
+          </PDFDownloadLink>
         </DialogFooter>
       </DialogContent>
     </Dialog>
