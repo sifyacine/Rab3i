@@ -1,5 +1,9 @@
 import { supabase } from "@/lib/supabase";
 
+const generateId = () => {
+  return 'INV-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 9).toUpperCase();
+};
+
 export interface Invoice {
   id: string;
   created_at: string;
@@ -33,7 +37,7 @@ export const invoicesService = {
   async createInvoice(invoice: Partial<Invoice>) {
     const { data, error } = await supabase
       .from('invoices')
-      .insert([invoice])
+      .insert([{ ...invoice, id: generateId() }])
       .select()
       .single();
     if (error) throw error;
