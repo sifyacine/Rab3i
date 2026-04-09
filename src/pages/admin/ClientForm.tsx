@@ -10,10 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { clientsService } from "@/services/clientsService";
 
 const ClientFormAdmin = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isEditing = !!id;
   
   const [formData, setFormData] = useState<any>({
@@ -25,24 +28,65 @@ const ClientFormAdmin = () => {
     notes: ""
   });
 
+  // Fetch existing client when editing
+  const { data: existingClient } = useQuery({
+    queryKey: ["client", id],
+    queryFn: () => clientsService.getClientById(id!),
+    enabled: !!id
+  });
+
   useEffect(() => {
-    if (isEditing) {
-      // Mock data
+    if (existingClient) {
       setFormData({
-        id: "1", 
-        name: "ياسين سيف", 
-        email: "yassine@example.com", 
-        phone: "+966 50 123 4567", 
-        company: "شركة سيف التقنية", 
-        address: "الرياض، المملكة العربية السعودية",
-        notes: "عميل منذ فترة طويلة مهتم بتطوير الويب."
+        ...existingClient,
+        address: ""
       });
     }
-  }, [id, isEditing]);
+  }, [existingClient]);
+
+  const createMutation = useMutation({
+    mutationFn: clientsService.createClient,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      toast.success("تم إضافة العميل بنجاح");
+      navigate("/admin/clients");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "حدث خطأ أثناء إضافة العميل");
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => clientsService.updateClient(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      toast.success("تم تحديث بيانات العميل");
+      navigate("/admin/clients");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "حدث خطأ أثناء تحديث العميل");
+    }
+  });
 
   const handleSave = () => {
-    toast.success(isEditing ? "تم تحديث بيانات العميل" : "تم إضافة العميل بنجاح");
-    navigate("/admin/clients");
+    if (!formData.name) {
+      toast.error("يرجى إدخال اسم العميل");
+      return;
+    }
+
+    const clientData = {
+      name: formData.name,
+      email: formData.email || null,
+      phone: formData.phone || null,
+      company: formData.company || null,
+      notes: formData.notes || null
+    };
+
+    if (isEditing && id) {
+      updateMutation.mutate({ id, data: clientData });
+    } else {
+      createMutation.mutate(clientData);
+    }
   };
 
   return (
@@ -63,7 +107,7 @@ const ClientFormAdmin = () => {
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">الإسم الكامل</Label>
+              <Label htmlFor="name">الإسم الكامل *</Label>
               <div className="relative">
                 <User className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input id="name" className="pr-10" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="ياسين سيف" />
@@ -73,7 +117,7 @@ const ClientFormAdmin = () => {
               <Label htmlFor="email">البريد الإلكتروني</Label>
               <div className="relative">
                 <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input id="email" className="pr-10" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="example@mail.com" />
+                <Input id="email" className="pr-10" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="example@mail.com" />
               </div>
             </div>
             <div className="space-y-2">
@@ -92,19 +136,20 @@ const ClientFormAdmin = () => {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="address">العنوان</Label>
-            <div className="relative">
-              <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input id="address" className="pr-10" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} placeholder="المدينة، الحي..." />
-            </div>
+            <Label htmlFor="notes">ملاحظات</Label>
+            <Input id="notes" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="ملاحظات حول العميل..." />
           </div>
         </CardContent>
       </Card>
 
       <div className="flex justify-end gap-3 pb-10">
         <Button variant="outline" asChild><Link to="/admin/clients">إلغاء الأمر</Link></Button>
-        <Button onClick={handleSave} className="bg-gradient-brand gap-2 px-8">
-          <Save size={18} /> حفظ البيانات
+        <Button 
+          onClick={handleSave} 
+          className="bg-gradient-brand gap-2 px-8"
+          disabled={createMutation.isPending || updateMutation.isPending}
+        >
+          <Save size={18} /> {isEditing ? "تحديث البيانات" : "حفظ البيانات"}
         </Button>
       </div>
     </div>
