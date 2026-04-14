@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, 
   DialogDescription, DialogFooter 
@@ -8,11 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Download, Printer, Globe, FileText 
 } from "lucide-react";
-import { PDFDownloadLink } from "@react-pdf/renderer";
 import { toast } from "sonner";
-import InvoicePDF from "./InvoicePDF";
+import { PDFDownloadLink, pdf } from "@react-pdf/renderer";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useEffect, useRef } from "react";
+
+const InvoicePDF = lazy(() => import("./InvoicePDF"));
 
 interface InvoiceData {
   id: string;
@@ -235,17 +237,29 @@ const InvoicePreviewDialog = ({ invoice, isOpen, onOpenChange }: InvoicePreviewD
 
         <DialogFooter className="mt-6 gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>{content.close}</Button>
-          <PDFDownloadLink
-            document={<InvoicePDF invoice={invoice} businessInfo={businessInfo} />}
-            fileName={`invoice-${invoice.id}.pdf`}
+          <Button 
+            onClick={async () => {
+              try {
+                const blob = await pdf(<InvoicePDF invoice={invoice} businessInfo={businessInfo} />).toBlob();
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `invoice-${invoice.id}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                toast.success(lang === "ar" ? "تم تحميل الفاتورة" : "Invoice downloaded");
+              } catch (err) {
+                console.error("PDF error:", err);
+                toast.error(lang === "ar" ? "فشل تحميل الفاتورة" : "Failed to download invoice");
+              }
+            }} 
+            className="gap-2"
           >
-            {({ loading }) => (
-              <Button className="gap-2" disabled={loading}>
-                <Download className="h-4 w-4" />
-                {loading ? (lang === "ar" ? "جاري التحميل..." : "Loading...") : content.download}
-              </Button>
-            )}
-          </PDFDownloadLink>
+            <Download className="h-4 w-4" />
+            {content.download}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

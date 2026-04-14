@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Download, Eye, Edit, Trash, Printer, FileText } from "lucide-react";
 import InvoicePreviewDialog from "@/components/admin/InvoicePreviewDialog";
+import { pdf } from "@react-pdf/renderer";
+import InvoicePDF from "@/components/admin/InvoicePDF";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +22,7 @@ import {
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { invoicesService, Invoice } from "@/services/invoicesService";
+import { supabase } from "@/lib/supabase";
 
 const InvoicesAdmin = () => {
   const navigate = useNavigate();
@@ -32,6 +35,58 @@ const InvoicesAdmin = () => {
     queryKey: ["invoices"],
     queryFn: () => invoicesService.getInvoices()
   });
+
+  const { data: settings } = useQuery({
+    queryKey: ["store-settings"],
+    queryFn: async () => {
+      const { data } = await supabase.from("store_settings").select("*").limit(1).single();
+      return data;
+    },
+  });
+
+  const businessInfo = {
+    storeName: settings?.store_name || "شركة ربيعي",
+    storeAddress: settings?.address || "شارع التخصصي، حي المعذر، الرياض، المملكة العربية السعودية",
+    storePhone: settings?.phone || "+966 55 123 4567",
+    vatNumber: settings?.vat_number || "310000000000003",
+    taxNumber: settings?.tax_number || "310000000000003",
+    crNumber: settings?.cr_number || "1010123456",
+    bankName: settings?.bank_name || "البنك الأهلي السعودي",
+    bankIban: settings?.bank_iban || "SA80 1000 0000 0000 0000 0000",
+    bankAccountName: settings?.bank_account_name || "شركة ربيعي للتجارة"
+  };
+
+  const handleDownloadPDF = async (invoice: Invoice) => {
+    try {
+      const invoiceData = {
+        id: invoice.id,
+        clientName: invoice.customer_name,
+        clientEmail: invoice.customer_phone || "",
+        status: invoice.status,
+        date: invoice.created_at,
+        dueDate: invoice.created_at,
+        items: [{ description: "خدمات تصميم وتطوير متكاملة", quantity: 1, price: invoice.total }]
+      };
+      const blob = await pdf(<InvoicePDF invoice={invoiceData} businessInfo={businessInfo} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `invoice-${invoice.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("تم تحميل الفاتورة");
+    } catch (err) {
+      console.error("PDF error:", err);
+      toast.error("فشل تحميل الفاتورة");
+    }
+  };
+
+  const handlePrint = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setIsPreviewOpen(true);
+  };
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => invoicesService.deleteInvoice(id),
@@ -119,11 +174,17 @@ const InvoicesAdmin = () => {
               <Edit className="h-4 w-4" />
               تعديل
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => {
+              e.stopPropagation();
+              handleDownloadPDF(item);
+            }}>
               <Download className="h-4 w-4" />
               تحميل PDF
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => {
+              e.stopPropagation();
+              handlePrint(item);
+            }}>
               <Printer className="h-4 w-4" />
               طباعة
             </DropdownMenuItem>
