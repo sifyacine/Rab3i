@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, Calendar, Loader2, Filter, X } from "lucide-react";
+import { Eye, Calendar, Filter, X } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import ProjectCardSkeleton from "@/components/ui/ProjectCardSkeleton";
 import { projectsService } from "@/services/projectsService";
 import { categoryService } from "@/services/categoryService";
 import { servicesService } from "@/services/servicesService";
@@ -20,12 +21,12 @@ const Portfolio = () => {
     queryFn: () => projectsService.getProjects({ publishedOnly: true }),
   });
 
-  const { data: categories = [] }: { data: Category[] } = useQuery({
+  const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: () => categoryService.getCategories(),
   });
 
-  const { data: services = [] }: { data: Service[] } = useQuery({
+  const { data: services = [] } = useQuery({
     queryKey: ["services-active"],
     queryFn: () => servicesService.getServices(true),
   });
@@ -84,8 +85,21 @@ const Portfolio = () => {
       <section className="sticky top-16 z-30 bg-background/80 backdrop-blur-xl border-b border-border/40 shadow-sm">
         <div className="container py-3 space-y-3">
           {/* Category row */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            <button
+          <motion.div 
+            initial="hidden"
+            animate="visible"
+            variants={{
+              visible: { transition: { staggerChildren: 0.05 } }
+            }}
+            className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none"
+          >
+            <motion.button
+              variants={{
+                hidden: { opacity: 0, x: -10 },
+                visible: { opacity: 1, x: 0 }
+              }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setSelectedCategory(null)}
               className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
                 !selectedCategory
@@ -94,10 +108,16 @@ const Portfolio = () => {
               }`}
             >
               الكل
-            </button>
+            </motion.button>
             {categories.map(cat => (
-              <button
+              <motion.button
                 key={cat.id}
+                variants={{
+                  hidden: { opacity: 0, x: -10 },
+                  visible: { opacity: 1, x: 0 }
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setSelectedCategory(cat.id === selectedCategory ? null : cat.id)}
                 className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
                   selectedCategory === cat.id
@@ -105,13 +125,19 @@ const Portfolio = () => {
                     : "bg-secondary text-foreground hover:bg-secondary/70"
                 }`}
               >
-                {cat.title_ar || cat.name}
-                <span className="ms-1 text-xs opacity-60">{cat.title_en}</span>
-              </button>
+                {cat.title_ar || cat.name_ar}
+                <span className="ms-1 text-xs opacity-60">{cat.title_en || cat.name_en}</span>
+              </motion.button>
             ))}
 
             {/* Services filter toggle */}
-            <button
+            <motion.button
+              variants={{
+                hidden: { opacity: 0, x: 10 },
+                visible: { opacity: 1, x: 0 }
+              }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowServiceFilter(v => !v)}
               className={`ms-auto whitespace-nowrap flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium border transition-all ${
                 selectedServices.length > 0
@@ -121,18 +147,25 @@ const Portfolio = () => {
             >
               <Filter className="h-3.5 w-3.5" />
               الخدمات {selectedServices.length > 0 && `(${selectedServices.length})`}
-            </button>
+            </motion.button>
 
             {/* Clear filters */}
-            {hasActiveFilter && (
-              <button
-                onClick={clearFilters}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
-              >
-                <X className="h-3.5 w-3.5" /> مسح
-              </button>
-            )}
-          </div>
+            <AnimatePresence>
+              {hasActiveFilter && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  whileHover={{ scale: 1.05, color: "var(--destructive)" }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={clearFilters}
+                  className="flex items-center gap-1 text-xs text-muted-foreground transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" /> مسح
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </motion.div>
 
           {/* Services sub-filter */}
           <AnimatePresence>
@@ -143,10 +176,23 @@ const Portfolio = () => {
                 exit={{ opacity: 0, height: 0 }}
                 className="overflow-hidden"
               >
-                <div className="flex flex-wrap gap-2 pt-1 pb-2">
+                <motion.div 
+                  initial="hidden"
+                  animate="visible"
+                  variants={{
+                    visible: { transition: { staggerChildren: 0.03 } }
+                  }}
+                  className="flex flex-wrap gap-2 pt-1 pb-2"
+                >
                   {services.map(svc => (
-                    <button
+                    <motion.button
                       key={svc.id}
+                      variants={{
+                        hidden: { opacity: 0, scale: 0.9 },
+                        visible: { opacity: 1, scale: 1 }
+                      }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => toggleService(svc.id)}
                       className={`whitespace-nowrap rounded-lg px-3 py-1 text-xs font-medium border transition-all ${
                         selectedServices.includes(svc.id)
@@ -156,9 +202,9 @@ const Portfolio = () => {
                     >
                       {svc.title_ar}
                       <span className="ms-1 opacity-50">{svc.title_en}</span>
-                    </button>
+                    </motion.button>
                   ))}
-                </div>
+                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -168,19 +214,37 @@ const Portfolio = () => {
       {/* Projects Grid */}
       <section className="container py-12">
         {loadingProjects ? (
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="break-inside-avoid" style={{ height: 300 + (i % 3) * 50 }}>
+                <ProjectCardSkeleton index={i} />
+              </div>
+            ))}
           </div>
         ) : filtered.length === 0 ? (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center h-64 gap-3 text-center"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center min-h-[400px] gap-4 text-center"
           >
-            <div className="text-4xl">🎨</div>
-            <p className="text-xl font-semibold">لا توجد مشاريع بهذا الفلتر</p>
-            <p className="text-muted-foreground">جرب تغيير الفئة أو إزالة بعض الفلاتر</p>
-            <button onClick={clearFilters} className="text-primary text-sm hover:underline">مسح الفلاتر</button>
+            <div className="relative">
+              <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full" />
+              <div className="relative bg-background border border-border rounded-2xl p-8 shadow-xl">
+                <Filter className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-2xl font-bold mb-2">لا توجد مشاريع بهذا الفلتر</h3>
+                <p className="text-muted-foreground max-w-sm mx-auto mb-6">
+                  جرب تغيير الفئة أو إزالة بعض الخدمات المختارة للوصول إلى نتائج أفضل.
+                </p>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={clearFilters} 
+                  className="bg-primary text-white px-8 py-2.5 rounded-full font-bold shadow-lg shadow-primary/20"
+                >
+                  مسح جميع الفلاتر
+                </motion.button>
+              </div>
+            </div>
           </motion.div>
         ) : (
           <motion.div
@@ -202,6 +266,27 @@ const Portfolio = () => {
 };
 
 function ProjectCard({ project, index }: { project: Project; index: number }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  
+  const rotateX = useTransform(y, [-0.5, 0.5], [3, -3]);
+  const rotateY = useTransform(x, [-0.5, 0.5], [-3, 3]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    x.set((e.clientX - centerX) / rect.width);
+    y.set((e.clientY - centerY) / rect.height);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    x.set(0);
+    y.set(0);
+  };
+
   return (
     <motion.div
       layout
@@ -210,16 +295,28 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.4, delay: index * 0.06 }}
       className="break-inside-avoid"
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={handleMouseLeave}
+      style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
     >
       <Link to={`/portfolio/${project.slug}`} className="group block">
-        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-sm hover:shadow-xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-1">
+        <motion.div
+          animate={{ scale: isHovered ? 1.02 : 1 }}
+          transition={{ duration: 0.3 }}
+          className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-sm hover:shadow-xl hover:shadow-primary/10 transition-all duration-500 hover:-translate-y-1"
+        >
           {/* Cover */}
           <div className="relative overflow-hidden bg-secondary/40" style={{ minHeight: 200 }}>
             {project.cover_image ? (
-              <img
+              <motion.img
                 src={project.cover_image}
                 alt={project.title}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                className="w-full h-full object-cover"
+                animate={{
+                  scale: isHovered ? 1.1 : 1,
+                }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                 loading="lazy"
               />
             ) : (
@@ -268,7 +365,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
               {new Date(project.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short" })}
             </div>
           </div>
-        </div>
+        </motion.div>
       </Link>
     </motion.div>
   );
