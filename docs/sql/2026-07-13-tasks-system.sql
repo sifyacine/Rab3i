@@ -13,6 +13,9 @@
 -- ── 1. Staff profile fields ──────────────────────────────────────────────────
 alter table public.profiles add column if not exists phone text;
 alter table public.profiles add column if not exists job_title text;
+-- Display mirror of auth.users.banned_until, maintained by the manage-users
+-- edge function so the dashboard can show/act on ban state via profiles.
+alter table public.profiles add column if not exists is_banned boolean not null default false;
 
 -- ── 2. Tasks table ────────────────────────────────────────────────────────────
 -- NOTE: project_id assumes public.projects(id) is uuid — check and adapt if not.

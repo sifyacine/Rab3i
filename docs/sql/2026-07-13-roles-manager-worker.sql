@@ -43,8 +43,8 @@
 -- The Supabase signup API is publicly reachable with the anon key, so the
 -- trigger must never honour a client-supplied role. Every new auth user gets
 -- the non-staff role 'pending' (denied by the app); the manager's dashboard
--- flow then sets the real role through the RLS-gated profiles upsert
--- (usersService.createUser). Nobody can self-assign manager/worker.
+-- flow then sets the real role via the `manage-users` edge function (service
+-- role, manager-gated). Nobody can self-assign manager/worker.
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -79,11 +79,12 @@ begin
 end;
 $$;
 
--- Recommended: also disable public signups in Supabase Dashboard →
--- Authentication → Sign In / Up if you want the dashboard to be the only
--- entry point. NOTE: the dashboard's "new user" form itself uses the public
--- signup API, so if you disable signups there, create accounts from the
--- Supabase Dashboard instead.
+-- Recommended: disable public signups in Supabase Dashboard →
+-- Authentication → Providers → Email → "Allow new users to sign up". The
+-- dashboard's "new user" form creates accounts through the `manage-users`
+-- edge function (service role, admin.createUser), which is unaffected by that
+-- setting — so turning signups off closes the only self-registration path
+-- without breaking manager-driven account creation.
 
 -- ── 3. Role helper for policies ──────────────────────────────────────────────
 -- security definer lets it read profiles without recursing into profiles' RLS.
@@ -131,7 +132,8 @@ $$;
 -- (the /request form) and public select on published projects/blog/services.
 --
 -- ── 5. Cleanup note ──────────────────────────────────────────────────────────
--- The dashboard's "delete user" only deletes the profiles row (the anon key
--- cannot delete auth users). Periodically remove orphaned auth accounts:
+-- The dashboard's "delete user" (manage-users edge function) removes BOTH the
+-- auth account and the profiles row, so no orphan cleanup is normally needed.
+-- If you ever create auth users outside the app, you can still sweep orphans:
 -- delete from auth.users u
 --   where not exists (select 1 from public.profiles p where p.id = u.id);

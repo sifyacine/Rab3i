@@ -54,6 +54,7 @@ npm run lint
 - Route protection: **`src/components/auth/ProtectedRoute.tsx`** (`allowedRoles` prop)
 - Roles: **`manager`** (full dashboard) and **`worker`** (dashboard minus Users/Settings/Invoices/Tasks-management). Legacy `admin` DB values map to `manager` in code (`src/lib/authSession.ts`); legacy `client` accounts are denied. There is **no client portal** — clients are CRM records only. DB-side migration (run manually, step by step): `docs/sql/2026-07-13-roles-manager-worker.sql`.
 - Tasks: managers create/assign at `/admin/tasks`; workers work their queue at `/admin/my-tasks` (status + notes). No automatic notifications — the manager tells workers to check their tasks. Every staff member edits their own name/phone at `/admin/profile` (via the `update_own_profile` RPC, so `role` can't be self-changed).
+- User management: managers add users, switch roles, ban/unban, and delete from `/admin/users` — all through the **`manage-users` edge function** (service role, manager-gated, self-action-guarded). It must be deployed (`supabase functions deploy manage-users`) or those actions error. `profiles.is_banned` mirrors `auth.users.banned_until` for the UI.
 
 ## Supabase requirements
 
@@ -72,7 +73,7 @@ Required env vars (Vite):
 
 Supabase client:
 
-- **`src/lib/supabase.ts`** exports `supabase`, `validateAndRefreshSession()`, and `createStandaloneAuthClient()` (non-persistent auth client used by `usersService.createUser` so signing up a new staff account doesn't replace the manager's session)
+- **`src/lib/supabase.ts`** exports `supabase` and `validateAndRefreshSession()`. Privileged staff-account creation no longer uses a browser signup client — it goes through the `manage-users` edge function.
 
 ⚠️ **Pitfall:** when env vars are missing, `supabase` is set to `null as any`. Many services/pages call `supabase.from(...)` without guards → runtime crash. Ensure env vars exist before testing any DB-backed pages.
 
@@ -96,7 +97,8 @@ Service modules (read these first when debugging DB issues):
   - storage bucket: `projects-media`
   - table: `project_media`
 - `src/services/usersService.ts`
-  - table: `profiles` (staff accounts; `createUser` signs up via a standalone auth client + upserts the profile row)
+  - table: `profiles` (read/list, own-profile RPC)
+  - **edge function `manage-users`** for privileged actions — `createUser` / `setUserRole` / `deleteUser` / `banUser` / `unbanUser` all `functions.invoke("manage-users", …)`. The function (service role) verifies the caller is a manager, then uses `auth.admin.*`. Source + deploy steps: `supabase/functions/manage-users/`.
 - `src/services/clientsService.ts`
   - table: `clients` (CRM records only — no login)
 - `src/services/invoicesService.ts`

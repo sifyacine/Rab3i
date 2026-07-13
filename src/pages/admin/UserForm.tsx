@@ -20,12 +20,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersService } from "@/services/usersService";
 import { getSignupErrorMessage } from "@/lib/authErrors";
 import { normalizeStaffRole, type AuthUserRole } from "@/lib/authSession";
+import { useAuth } from "@/contexts/AuthContext";
 
 const UserFormAdmin = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
   const isEditing = !!id;
+  const isSelf = isEditing && id === currentUser?.id;
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -62,32 +65,36 @@ const UserFormAdmin = () => {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
-      toast.success("تم إنشاء الحساب بنجاح. سيصل بريد تأكيد إلى المستخدم الجديد.");
+      toast.success("تم إنشاء الحساب بنجاح ويمكن للمستخدم تسجيل الدخول مباشرة.");
       navigate("/admin/users");
     },
     onError: (error: Error) => {
-      if (error.message === "EXISTING_UNCONFIRMED") {
-        toast.error("هذا البريد الإلكتروني مسجل مسبقاً وغير مؤكد. تحقق من بريد المستخدم.");
-      } else {
-        toast.error(getSignupErrorMessage(error.message));
-      }
+      toast.error(getSignupErrorMessage(error.message));
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: () => usersService.updateUser(id!, {
-      full_name: fullName.trim(),
-      role,
-      phone: phone.trim() || null,
-      job_title: jobTitle.trim() || null,
-    }),
+    mutationFn: async () => {
+      // Profile fields go through a normal update; a role change is a
+      // privileged action routed to the edge function.
+      await usersService.updateUser(id!, {
+        full_name: fullName.trim(),
+        phone: phone.trim() || null,
+        job_title: jobTitle.trim() || null,
+      });
+      // A manager can't change their own role (the server refuses self-demote);
+      // the Select is disabled for self, so this only runs for other users.
+      if (!isSelf && normalizeStaffRole(existingUser?.role) !== role) {
+        await usersService.setUserRole(id!, role);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       queryClient.invalidateQueries({ queryKey: ["user", id] });
       toast.success("تم تحديث بيانات المستخدم");
       navigate("/admin/users");
     },
-    onError: () => toast.error("حدث خطأ أثناء حفظ التعديلات"),
+    onError: (error: Error) => toast.error(error.message || "حدث خطأ أثناء حفظ التعديلات"),
   });
 
   const saving = createMutation.isPending || updateMutation.isPending;
@@ -167,7 +174,7 @@ const UserFormAdmin = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="role">الدور (الرتبة)</Label>
-                <Select value={role} onValueChange={(v) => setRole(v as AuthUserRole)}>
+                <Select value={role} onValueChange={(v) => setRole(v as AuthUserRole)} disabled={isSelf}>
                   <SelectTrigger id="role" className="relative pr-10">
                     <Shield className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <SelectValue placeholder="اختر الرتبة" />
@@ -177,6 +184,7 @@ const UserFormAdmin = () => {
                     <SelectItem value="worker">موظف (بدون الأقسام الإدارية)</SelectItem>
                   </SelectContent>
                 </Select>
+                {isSelf && <p className="text-xs text-muted-foreground">لا يمكنك تغيير رتبتك بنفسك.</p>}
               </div>
               {!isEditing && (
                 <div className="space-y-2">
@@ -197,7 +205,7 @@ const UserFormAdmin = () => {
           ) : (
             <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 flex gap-3 text-xs text-blue-400">
               <AlertCircle className="h-4 w-4 shrink-0" />
-              <p>سيتلقى المستخدم بريداً لتأكيد حسابه قبل أول تسجيل دخول.</p>
+              <p>يُفعَّل الحساب فوراً — سلّم المستخدم بريده وكلمة المرور ليسجّل الدخول.</p>
             </div>
           )}
         </CardContent>

@@ -1,6 +1,4 @@
-import { supabase, createStandaloneAuthClient } from "@/lib/supabase";
-import { isExistingUnconfirmedSignup } from "@/lib/authSignupOutcome";
-import { buildAuthRedirectUrl } from "@/lib/authRedirect";
+import { supabase } from "@/lib/supabase";
 import type { AuthUserRole } from "@/lib/authSession";
 
 export interface Profile {
@@ -10,6 +8,7 @@ export interface Profile {
   full_name: string | null;
   phone: string | null;
   job_title: string | null;
+  is_banned: boolean;
   created_at: string;
 }
 
@@ -20,6 +19,28 @@ export interface CreateUserInput {
   role: AuthUserRole;
   phone?: string;
   job_title?: string;
+}
+
+// Calls the privileged `manage-users` edge function (service role). The manager
+// check is enforced server-side; the client just forwards the manager's JWT
+// (supabase-js attaches it to functions.invoke automatically).
+async function invokeManageUsers(body: Record<string, unknown>) {
+  if (!supabase) throw new Error("SUPABASE_UNAVAILABLE");
+  const { data, error } = await supabase.functions.invoke("manage-users", { body });
+  if (error) {
+    // Edge-function non-2xx responses surface as FunctionsHttpError; the useful
+    // message is in the response body, not error.message.
+    let message = error.message;
+    try {
+      const ctx = (error as { context?: Response }).context;
+      const payload = ctx && typeof ctx.json === "function" ? await ctx.json() : null;
+      if (payload?.error) message = payload.error;
+    } catch {
+      /* fall back to error.message */
+    }
+    throw new Error(message);
+  }
+  return data as { ok?: boolean; id?: string };
 }
 
 export const usersService = {
@@ -64,47 +85,34 @@ export const usersService = {
     if (error) throw error;
   },
 
-  // Creates a staff account (manager/worker) from the dashboard.
-  // Uses a standalone auth client so the manager's own session survives.
-  // SECURITY: the role is deliberately NOT put into user_metadata (the signup
-  // API is public, so metadata must never grant roles); it is written to the
-  // profiles row from the manager's session, which RLS must authorize —
-  // see docs/sql/2026-07-13-roles-manager-worker.sql.
+  // ── Privileged actions (managers only, via the edge function) ─────────────
+
+  // Creates a confirmed staff account with the chosen role in one round-trip.
   async createUser(input: CreateUserInput) {
-    const authClient = createStandaloneAuthClient();
-    if (!authClient || !supabase) throw new Error("SUPABASE_UNAVAILABLE");
-
-    const { data, error } = await authClient.auth.signUp({
-      email: input.email,
-      password: input.password,
-      options: {
-        data: {
-          full_name: input.full_name,
-        },
-        emailRedirectTo: buildAuthRedirectUrl("/login"),
-      },
-    });
-
-    if (error) throw error;
-    if (isExistingUnconfirmedSignup(data)) throw new Error("EXISTING_UNCONFIRMED");
-    if (!data.user) throw new Error("SIGNUP_FAILED");
-
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: data.user.id,
-        email: input.email,
-        full_name: input.full_name,
-        role: input.role,
-        phone: input.phone ?? null,
-        job_title: input.job_title ?? null,
-      });
-    if (profileError) throw profileError;
-
-    return data.user;
+    return invokeManageUsers({ action: "create", ...input });
   },
 
-  async updateUser(id: string, updates: Partial<Profile>) {
+  // Switches a user's role (manager ⇄ worker)
+  async setUserRole(id: string, role: AuthUserRole) {
+    return invokeManageUsers({ action: "set_role", userId: id, role });
+  },
+
+  // Fully deletes the auth account AND the profiles row
+  async deleteUser(id: string) {
+    return invokeManageUsers({ action: "delete", userId: id });
+  },
+
+  // Blocks the user from logging in (indefinite) / lifts the block
+  async banUser(id: string) {
+    return invokeManageUsers({ action: "ban", userId: id });
+  },
+  async unbanUser(id: string) {
+    return invokeManageUsers({ action: "unban", userId: id });
+  },
+
+  // Non-privileged profile field edits (name/phone/job_title). Role changes go
+  // through setUserRole; RLS must allow managers to update these columns.
+  async updateUser(id: string, updates: Partial<Pick<Profile, "full_name" | "phone" | "job_title">>) {
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
@@ -114,16 +122,4 @@ export const usersService = {
     if (error) throw error;
     return data as Profile;
   },
-
-  // Deletes only the profiles row — that revokes all app/RLS access, but the
-  // auth account itself survives (the anon key cannot delete auth users).
-  // Orphaned auth accounts are cleaned up DB-side; see section 5 of
-  // docs/sql/2026-07-13-roles-manager-worker.sql.
-  async deleteUser(id: string) {
-    const { error } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', id);
-    if (error) throw error;
-  }
 };

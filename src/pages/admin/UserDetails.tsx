@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   ArrowRight, Edit, Trash, User, Shield,
   Mail, Calendar, AlertCircle, Loader2,
-  Phone, Briefcase, ClipboardList
+  Phone, Briefcase, ClipboardList, Ban, ShieldCheck, ArrowLeftRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,11 +26,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersService } from "@/services/usersService";
 import { tasksService, taskStatusConfig } from "@/services/tasksService";
 import { normalizeStaffRole } from "@/lib/authSession";
+import { useAuth } from "@/contexts/AuthContext";
 
 const UserDetailsAdmin = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
   const { data: user, isLoading } = useQuery({
@@ -53,7 +55,24 @@ const UserDetailsAdmin = () => {
       toast.success("تم حذف المستخدم بنجاح");
       navigate("/admin/users");
     },
-    onError: () => toast.error("حدث خطأ أثناء الحذف"),
+    onError: (e: Error) => toast.error(e.message || "حدث خطأ أثناء الحذف"),
+  });
+
+  const invalidateUser = () => {
+    queryClient.invalidateQueries({ queryKey: ["users"] });
+    queryClient.invalidateQueries({ queryKey: ["user", id] });
+  };
+
+  const roleMutation = useMutation({
+    mutationFn: (role: "manager" | "worker") => usersService.setUserRole(id!, role),
+    onSuccess: () => { invalidateUser(); toast.success("تم تحديث رتبة المستخدم"); },
+    onError: (e: Error) => toast.error(e.message || "تعذّر تغيير الرتبة"),
+  });
+
+  const banMutation = useMutation({
+    mutationFn: (ban: boolean) => (ban ? usersService.banUser(id!) : usersService.unbanUser(id!)),
+    onSuccess: (_d, ban) => { invalidateUser(); toast.success(ban ? "تم حظر المستخدم" : "تم رفع الحظر"); },
+    onError: (e: Error) => toast.error(e.message || "تعذّر تنفيذ الإجراء"),
   });
 
   if (isLoading) {
@@ -83,6 +102,9 @@ const UserDetailsAdmin = () => {
         : "لا يملك صلاحية الوصول إلى لوحة التحكم";
   const displayName = user.full_name || user.email;
   const joinDate = new Date(user.created_at).toLocaleDateString("ar-SA");
+  const isSelf = user.id === currentUser?.id;
+  const nextRole: "manager" | "worker" = staffRole === "manager" ? "worker" : "manager";
+  const busy = roleMutation.isPending || banMutation.isPending || deleteMutation.isPending;
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl mx-auto" dir="rtl">
@@ -97,6 +119,9 @@ const UserDetailsAdmin = () => {
               <Badge variant={staffRole === "manager" ? "default" : "secondary"}>
                 {roleLabel}
               </Badge>
+              {user.is_banned && (
+                <Badge variant="outline" className="bg-red-500/15 text-red-600 border-red-500/30">محظور</Badge>
+              )}
             </div>
             <p className="text-muted-foreground flex items-center gap-2 mt-1">
               <Mail className="h-3.5 w-3.5" />
@@ -104,13 +129,25 @@ const UserDetailsAdmin = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button variant="outline" asChild className="gap-2">
             <Link to={`/admin/users/${id}/edit`}><Edit className="h-4 w-4" /> تعديل</Link>
           </Button>
-          <Button variant="destructive" onClick={() => setIsAlertOpen(true)} className="gap-2 border-none">
-            <Trash className="h-4 w-4" /> حذف
-          </Button>
+          {!isSelf && (
+            <>
+              <Button variant="outline" disabled={busy} onClick={() => roleMutation.mutate(nextRole)} className="gap-2">
+                <ArrowLeftRight className="h-4 w-4" />
+                {nextRole === "manager" ? "ترقية إلى مدير" : "تحويل إلى موظف"}
+              </Button>
+              <Button variant="outline" disabled={busy} onClick={() => banMutation.mutate(!user.is_banned)} className="gap-2">
+                {user.is_banned ? <ShieldCheck className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                {user.is_banned ? "رفع الحظر" : "حظر"}
+              </Button>
+              <Button variant="destructive" disabled={busy} onClick={() => setIsAlertOpen(true)} className="gap-2 border-none">
+                <Trash className="h-4 w-4" /> حذف
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
