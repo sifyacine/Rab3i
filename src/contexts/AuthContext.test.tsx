@@ -32,6 +32,7 @@ describe("AuthProvider refresh bootstrap", () => {
     mockSupabase.auth.onAuthStateChange.mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } },
     });
+    mockSupabase.auth.signOut.mockResolvedValue({ error: null });
   });
 
   afterEach(() => {
@@ -40,7 +41,7 @@ describe("AuthProvider refresh bootstrap", () => {
     vi.restoreAllMocks();
   });
 
-  it("does not keep spinner forever when role query hangs during refresh", async () => {
+  it("fails closed to login (no infinite spinner) when role query hangs and no staff role exists", async () => {
     const session = {
       access_token: "token",
       refresh_token: "refresh",
@@ -60,14 +61,14 @@ describe("AuthProvider refresh bootstrap", () => {
     mockSupabase.from.mockReturnValue({ select });
 
     render(
-      <MemoryRouter initialEntries={["/portal"]}>
+      <MemoryRouter initialEntries={["/admin"]}>
         <AuthProvider>
           <Routes>
             <Route
-              path="/portal"
+              path="/admin"
               element={
-                <ProtectedRoute requiredRole="client">
-                  <div>Portal Home</div>
+                <ProtectedRoute allowedRoles={["manager", "worker"]}>
+                  <div>Dashboard Home</div>
                 </ProtectedRoute>
               }
             />
@@ -90,17 +91,19 @@ describe("AuthProvider refresh bootstrap", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText("Portal Home")).toBeInTheDocument();
+    // No staff role could be resolved — the app fails closed to login
+    expect(screen.getByText("Login Page")).toBeInTheDocument();
+    expect(document.querySelector(".animate-spin")).not.toBeInTheDocument();
   });
 
-  it("initAuth completes and unblocks route even when role lookup fails", async () => {
+  it("unblocks the dashboard via the metadata role when the profiles lookup fails", async () => {
     const session = {
       access_token: "token",
       refresh_token: "refresh",
       user: {
         id: "user-2",
         email: "u2@example.com",
-        user_metadata: { role: "client" },
+        user_metadata: { role: "worker" },
       },
     };
 
@@ -113,14 +116,14 @@ describe("AuthProvider refresh bootstrap", () => {
     mockSupabase.from.mockReturnValue({ select });
 
     render(
-      <MemoryRouter initialEntries={["/portal"]}>
+      <MemoryRouter initialEntries={["/admin"]}>
         <AuthProvider>
           <Routes>
             <Route
-              path="/portal"
+              path="/admin"
               element={
-                <ProtectedRoute requiredRole="client">
-                  <div>Portal Home</div>
+                <ProtectedRoute allowedRoles={["manager", "worker"]}>
+                  <div>Dashboard Home</div>
                 </ProtectedRoute>
               }
             />
@@ -143,6 +146,97 @@ describe("AuthProvider refresh bootstrap", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText("Portal Home")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard Home")).toBeInTheDocument();
   });
- });
+
+  it("treats a legacy admin profile as manager and allows manager-only content", async () => {
+    const session = {
+      access_token: "token",
+      refresh_token: "refresh",
+      user: {
+        id: "user-3",
+        email: "u3@example.com",
+        user_metadata: {},
+      },
+    };
+
+    mockSupabase.auth.getSession.mockResolvedValue({ data: { session } });
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: session.user } });
+
+    const single = vi.fn().mockResolvedValue({ data: { role: "admin" }, error: null });
+    const eq = vi.fn().mockReturnValue({ single });
+    const select = vi.fn().mockReturnValue({ eq });
+    mockSupabase.from.mockReturnValue({ select });
+
+    render(
+      <MemoryRouter initialEntries={["/admin/users"]}>
+        <AuthProvider>
+          <Routes>
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute allowedRoles={["manager"]}>
+                  <div>Users Section</div>
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/login" element={<div>Login Page</div>} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Users Section")).toBeInTheDocument();
+  });
+
+  it("redirects a worker away from manager-only content to the dashboard", async () => {
+    const session = {
+      access_token: "token",
+      refresh_token: "refresh",
+      user: {
+        id: "user-4",
+        email: "u4@example.com",
+        user_metadata: {},
+      },
+    };
+
+    mockSupabase.auth.getSession.mockResolvedValue({ data: { session } });
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: session.user } });
+
+    const single = vi.fn().mockResolvedValue({ data: { role: "worker" }, error: null });
+    const eq = vi.fn().mockReturnValue({ single });
+    const select = vi.fn().mockReturnValue({ eq });
+    mockSupabase.from.mockReturnValue({ select });
+
+    render(
+      <MemoryRouter initialEntries={["/admin/users"]}>
+        <AuthProvider>
+          <Routes>
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute allowedRoles={["manager"]}>
+                  <div>Users Section</div>
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/admin" element={<div>Dashboard Home</div>} />
+            <Route path="/login" element={<div>Login Page</div>} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Dashboard Home")).toBeInTheDocument();
+  });
+});

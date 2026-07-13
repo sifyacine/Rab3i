@@ -23,6 +23,7 @@ import { Service } from "@/types/portfolio";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRefresh } from "@/contexts/RefreshContext";
+import { isStaffRole } from "@/lib/authSession";
 
 const ServicesAdmin = () => {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ const ServicesAdmin = () => {
   const { data: services = [], isLoading } = useQuery({
     queryKey: ["admin-services"],
     queryFn: () => servicesService.getServices(),
-    enabled: role === "admin"
+    enabled: isStaffRole(role)
   });
 
   const deleteMutation = useMutation({

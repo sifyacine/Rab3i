@@ -17,7 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
  *   enabled: isReady,
  * });
  */
-export function useAuthReady(requireRole?: "admin" | "client"): boolean {
+export function useAuthReady(requireRole?: "manager" | "worker"): boolean {
   const { loading, sessionValid, user, role } = useAuth();
 
   // Still loading

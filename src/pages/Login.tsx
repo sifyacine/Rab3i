@@ -1,11 +1,13 @@
 import { useState, type CSSProperties } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useNavigate, Link, useLocation, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { getLoginErrorMessage } from "@/lib/authErrors";
+import { normalizeStaffRole } from "@/lib/authSession";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AUTH_REQUEST_TIMEOUT_MS = 15000;
 
@@ -32,7 +34,7 @@ type LoginAuthResult = {
     user: {
       id: string;
       user_metadata?: {
-        role?: "admin" | "client";
+        role?: string;
       };
     } | null;
   };
@@ -45,12 +47,13 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const { sessionValid, role: sessionRole, loading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Get the redirect path from state, or default based on role
+  // Get the redirect path from state, or default to the dashboard
   const from = location.state?.from?.pathname || null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,18 +89,38 @@ const Login = () => {
         return;
       }
 
+      // The profiles row is authoritative for roles. Sign out only on a
+      // definitive denial (explicit non-staff role, or confirmed missing row);
+      // a transient lookup failure is not a verdict — navigate and let
+      // AuthContext + ProtectedRoute make the final call.
+      let denied = false;
+      try {
+        const { data: profile, error: profileError } = await withAuthTimeout(
+          Promise.resolve(
+            supabase.from("profiles").select("role").eq("id", data.user.id).single()
+          ),
+          "ROLE_TIMEOUT"
+        );
+        if (profileError) {
+          // PGRST116 = zero rows: this account has no staff profile
+          denied = profileError.code === "PGRST116";
+        } else {
+          denied = normalizeStaffRole(profile?.role) === null;
+        }
+      } catch {
+        // Timeout/network error — leave the decision to the route guards
+      }
+
+      if (denied) {
+        await supabase.auth.signOut();
+        toast.error("هذا الحساب لا يملك صلاحية الوصول إلى لوحة التحكم");
+        return;
+      }
+
       queryClient.clear();
       toast.success("تم تسجيل الدخول بنجاح");
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", data.user.id)
-        .single();
-
-      const role = profile?.role ?? data.user.user_metadata?.role ?? "client";
-
-      navigate(from ?? (role === "admin" ? "/admin" : "/portal"), { replace: true });
+      navigate(from ?? "/admin", { replace: true });
     } catch (error) {
       if (error instanceof Error && error.message === "LOGIN_TIMEOUT") {
         toast.error("استغرقت العملية وقتاً طويلاً. تحقق من الاتصال وحاول مرة أخرى.");
@@ -108,6 +131,13 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  // Already signed in as staff — no need to show the login form.
+  // Never redirect mid-submit: the auth listener can resolve the role while
+  // handleSubmit is still running, and unmounting would abort it.
+  if (!authLoading && sessionValid && sessionRole && !loading) {
+    return <Navigate to="/admin" replace />;
+  }
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
@@ -126,7 +156,7 @@ const Login = () => {
               <img src="/Logo Arabic Version 02.png" alt="ربيعي" className="h-16 w-auto" />
             </Link>
             <h1 className="text-xl font-bold text-foreground">تسجيل الدخول</h1>
-            <p className="mt-2 text-sm text-muted-foreground">ادخل إلى لوحة التحكم أو بوابة العملاء</p>
+            <p className="mt-2 text-sm text-muted-foreground">ادخل إلى لوحة التحكم</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -201,15 +231,6 @@ const Login = () => {
               )}
             </button>
           </form>
-
-          <div className="mt-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              ليس لديك حساب؟{" "}
-              <Link to="/signup" className="font-semibold text-primary hover:underline">
-                أنشئ حساباً جديداً
-              </Link>
-            </p>
-          </div>
         </div>
       </motion.div>
     </div>

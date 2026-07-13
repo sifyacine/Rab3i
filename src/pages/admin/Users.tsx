@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { Shield, UserPlus, Trash, Key, Eye, Edit } from "lucide-react";
+import { Shield, UserPlus, Trash, Eye, Edit } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersService, Profile } from "@/services/usersService";
+import { normalizeStaffRole } from "@/lib/authSession";
 
 const Users = () => {
   const navigate = useNavigate();
@@ -57,17 +58,20 @@ const Users = () => {
     {
       header: "الدور",
       accessorKey: "role" as const,
-      cell: (item: Profile) => (
-        <Badge 
-          variant={item.role === "admin" ? "default" : "secondary"}
-          className={cn(
-            "font-medium",
-            item.role === "admin" ? "bg-primary text-white" : "bg-secondary text-secondary-foreground"
-          )}
-        >
-          {item.role === "admin" ? "مدير" : "محرر"}
-        </Badge>
-      ),
+      cell: (item: Profile) => {
+        const staffRole = normalizeStaffRole(item.role);
+        return (
+          <Badge
+            variant={staffRole === "manager" ? "default" : "secondary"}
+            className={cn(
+              "font-medium",
+              staffRole === "manager" ? "bg-primary text-white" : "bg-secondary text-secondary-foreground"
+            )}
+          >
+            {staffRole === "manager" ? "مدير" : staffRole === "worker" ? "موظف" : "بدون صلاحية"}
+          </Badge>
+        );
+      },
     },
     { 
       header: "تاريخ الإنشاء", 
@@ -102,11 +106,7 @@ const Users = () => {
               <Edit className="h-4 w-4" />
               تعديل
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-              <Key className="h-4 w-4" />
-              تغيير كلمة المرور
-            </DropdownMenuItem>
-            <DropdownMenuItem 
+            <DropdownMenuItem
               className="gap-2 cursor-pointer text-destructive focus:text-destructive" 
               onClick={(e) => {
                 e.stopPropagation();

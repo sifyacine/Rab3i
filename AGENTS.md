@@ -49,10 +49,10 @@ npm run lint
 - Routing + providers: **`src/App.tsx`**
   - Providers order: React Query → TooltipProvider → Toasters → AuthProvider → RefreshProvider → BrowserRouter
 - Pages:
-  - Public: **`src/pages/public/*`**
-  - Admin: **`src/pages/admin/*`** (nested under `/admin/*`)
-  - Client portal: **`src/pages/portal/*`** (nested under `/portal/*`)
-- Route protection: **`src/components/auth/ProtectedRoute.tsx`**
+  - Public: **`src/pages/public/*`** (no signup page — accounts are created by managers from `/admin/users`)
+  - Staff dashboard: **`src/pages/admin/*`** (nested under `/admin/*`)
+- Route protection: **`src/components/auth/ProtectedRoute.tsx`** (`allowedRoles` prop)
+- Roles: **`manager`** (full dashboard) and **`worker`** (dashboard minus Users/Settings/Invoices). Legacy `admin` DB values map to `manager` in code (`src/lib/authSession.ts`); legacy `client` accounts are denied. There is **no client portal** — clients are CRM records only. DB-side migration (run manually, step by step): `docs/sql/2026-07-13-roles-manager-worker.sql`.
 
 ## Supabase requirements
 
@@ -71,7 +71,7 @@ Required env vars (Vite):
 
 Supabase client:
 
-- **`src/lib/supabase.ts`** exports `supabase` and `validateAndRefreshSession()`
+- **`src/lib/supabase.ts`** exports `supabase`, `validateAndRefreshSession()`, and `createStandaloneAuthClient()` (non-persistent auth client used by `usersService.createUser` so signing up a new staff account doesn't replace the manager's session)
 
 ⚠️ **Pitfall:** when env vars are missing, `supabase` is set to `null as any`. Many services/pages call `supabase.from(...)` without guards → runtime crash. Ensure env vars exist before testing any DB-backed pages.
 
@@ -94,6 +94,12 @@ Service modules (read these first when debugging DB issues):
 - `src/services/mediaService.ts`
   - storage bucket: `projects-media`
   - table: `project_media`
+- `src/services/usersService.ts`
+  - table: `profiles` (staff accounts; `createUser` signs up via a standalone auth client + upserts the profile row)
+- `src/services/clientsService.ts`
+  - table: `clients` (CRM records only — no login)
+- `src/services/invoicesService.ts`
+  - table: `invoices` (manager-only section)
 
 ## Testing
 
@@ -105,7 +111,7 @@ Service modules (read these first when debugging DB issues):
 
 ## Known fragile areas (watch-outs)
 
-- `requestsService.getMyRequests()` appears to return all rows; rely on RLS to prevent leakage.
+- RLS policies in Supabase may still reference the legacy `admin`/`client` roles — walk through `docs/sql/2026-07-13-roles-manager-worker.sql` in the Supabase SQL editor (deliberately NOT in `supabase/migrations/`, so `db push` can't apply it blindly) or workers will hit RLS errors on staff tables.
 - Blog slug generation may collapse Arabic titles to empty/duplicates.
 - Blog view counting is read-then-update (lost update risk under concurrency).
 - `servicesService.setProjectServices()` does delete-then-insert without a transaction.

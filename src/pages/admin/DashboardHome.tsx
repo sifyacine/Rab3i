@@ -8,6 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRefresh } from "@/contexts/RefreshContext";
+import { isStaffRole } from "@/lib/authSession";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -35,13 +36,13 @@ const DashboardHome = () => {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: () => projectsService.getProjectStats(),
-    enabled: role === "admin"
+    enabled: isStaffRole(role)
   });
 
   const { data: recentRequests, isLoading: requestsLoading } = useQuery({
     queryKey: ["admin-recent-requests"],
     queryFn: () => requestsService.getRecentRequests(5),
-    enabled: role === "admin"
+    enabled: isStaffRole(role)
   });
 
   // Show loading if auth is still loading OR queries are loading

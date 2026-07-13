@@ -1,14 +1,14 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { 
-  ArrowRight, Edit, Trash, User, Shield, 
-  Mail, Calendar, Key, AlertCircle, Clock
+import {
+  ArrowRight, Edit, Trash, User, Shield,
+  Mail, Calendar, AlertCircle, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,27 +20,59 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { usersService } from "@/services/usersService";
+import { normalizeStaffRole } from "@/lib/authSession";
 
 const UserDetailsAdmin = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
-  // Mock user data
-  const user = {
-    id: "1", 
-    username: "admin_yassine", 
-    email: "yassine@example.com", 
-    role: "admin",
-    lastLogin: "2024-03-21 15:30",
-    joinDate: "2023-12-01",
-    status: "active"
-  };
+  const { data: user, isLoading } = useQuery({
+    queryKey: ["user", id],
+    queryFn: () => usersService.getUserById(id!),
+    enabled: !!id,
+  });
 
-  const confirmDelete = () => {
-    toast.success("تم حذف المستخدم بنجاح");
-    navigate("/admin/users");
-  };
+  const deleteMutation = useMutation({
+    mutationFn: () => usersService.deleteUser(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success("تم حذف المستخدم بنجاح");
+      navigate("/admin/users");
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحذف"),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <p className="text-muted-foreground">لم يتم العثور على المستخدم</p>
+        <Button variant="outline" asChild><Link to="/admin/users">العودة للمستخدمين</Link></Button>
+      </div>
+    );
+  }
+
+  const staffRole = normalizeStaffRole(user.role);
+  const roleLabel = staffRole === "manager" ? "مدير" : staffRole === "worker" ? "موظف" : "بدون صلاحية";
+  const roleDescription =
+    staffRole === "manager"
+      ? "مدير كامل الصلاحيات"
+      : staffRole === "worker"
+        ? "موظف — بدون الأقسام الإدارية"
+        : "لا يملك صلاحية الوصول إلى لوحة التحكم";
+  const displayName = user.full_name || user.email;
+  const joinDate = new Date(user.created_at).toLocaleDateString("ar-SA");
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl mx-auto" dir="rtl">
@@ -51,9 +83,9 @@ const UserDetailsAdmin = () => {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold">{user.username}</h1>
-              <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                {user.role === "admin" ? "مدير نظام" : "محرر"}
+              <h1 className="text-3xl font-bold">{displayName}</h1>
+              <Badge variant={staffRole === "manager" ? "default" : "secondary"}>
+                {roleLabel}
               </Badge>
             </div>
             <p className="text-muted-foreground flex items-center gap-2 mt-1">
@@ -80,36 +112,31 @@ const UserDetailsAdmin = () => {
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-1">
-                <Label className="text-muted-foreground">اسم المستخدم</Label>
-                <p className="font-bold flex items-center gap-2 font-sans"><User className="h-4 w-4 text-primary" /> {user.username}</p>
+                <Label className="text-muted-foreground">الاسم الكامل</Label>
+                <p className="font-bold flex items-center gap-2 font-sans"><User className="h-4 w-4 text-primary" /> {displayName}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-muted-foreground">الرتبة</Label>
-                <p className="font-bold flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /> {user.role === "admin" ? "مدير كامل الصلاحيات" : "محرر محتوى"}</p>
+                <p className="font-bold flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /> {roleDescription}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-muted-foreground">تاريخ الانضمام</Label>
-                <p className="font-medium flex items-center gap-2"><Calendar className="h-4 w-4 text-primary" /> {user.joinDate}</p>
+                <p className="font-medium flex items-center gap-2"><Calendar className="h-4 w-4 text-primary" /> {joinDate}</p>
               </div>
-              <div className="space-y-1">
-                <Label className="text-muted-foreground">آخر ظهور</Label>
-                <p className="font-medium flex items-center gap-2 font-sans"><Clock className="h-4 w-4 text-primary" /> {user.lastLogin}</p>
-              </div>
-            </div>
-            <div className="pt-4 border-t border-border/20">
-              <Button variant="outline" className="gap-2"><Key className="h-4 w-4" /> إعادة تعيين كلمة المرور</Button>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-border/40 bg-pink-500/5 h-fit">
-          <CardHeader>
-            <CardTitle className="text-lg text-pink-500 flex items-center gap-2"><AlertCircle className="h-4 w-4" /> تنبيه أمني</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-pink-500/80 leading-relaxed">
-            هذا الحساب يمتلك صلاحيات إدارية كاملة. يرجى الحذر عند تعديل بياناته أو صلاحياته لتجنب فقدان الوصول إلى لوحة التحكم.
-          </CardContent>
-        </Card>
+        {staffRole === "manager" && (
+          <Card className="border-border/40 bg-pink-500/5 h-fit">
+            <CardHeader>
+              <CardTitle className="text-lg text-pink-500 flex items-center gap-2"><AlertCircle className="h-4 w-4" /> تنبيه أمني</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-pink-500/80 leading-relaxed">
+              هذا الحساب يمتلك صلاحيات إدارية كاملة. يرجى الحذر عند تعديل بياناته أو صلاحياته لتجنب فقدان الوصول إلى لوحة التحكم.
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
@@ -120,7 +147,7 @@ const UserDetailsAdmin = () => {
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:justify-start">
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">تأكيد الحذف</AlertDialogAction>
+            <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">تأكيد الحذف</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

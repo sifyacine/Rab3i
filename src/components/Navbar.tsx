@@ -109,19 +109,12 @@ const Navbar = () => {
             {/* User Status / Auth Buttons */}
             {user ? (
               <div className="flex items-center gap-3">
-                {role === "admin" ? (
+                {role ? (
                   <Link
                     to="/admin"
                     className="text-sm font-medium text-foreground/70 transition-colors hover:text-primary"
                   >
                     لوحة التحكم
-                  </Link>
-                ) : role === "client" ? (
-                  <Link
-                    to="/portal"
-                    className="text-sm font-medium text-foreground/70 transition-colors hover:text-primary"
-                  >
-                    بوابة العملاء
                   </Link>
                 ) : null}
                 <Button
@@ -136,12 +129,6 @@ const Navbar = () => {
               </div>
             ) : (
               <>
-                <Link
-                  to="/signup"
-                  className="text-sm font-medium text-foreground/70 transition-colors hover:text-primary"
-                >
-                  إنشاء حساب
-                </Link>
                 <Link
                   to="/login"
                   className="text-sm font-medium text-foreground/70 transition-colors hover:text-primary"
@@ -215,19 +202,12 @@ const Navbar = () => {
             >
               {loading ? null : user ? (
                 <>
-                  {role === "admin" ? (
+                  {role ? (
                     <Link
                       to="/admin"
                       className="text-lg font-medium text-foreground/80 hover:text-primary transition-colors"
                     >
                       لوحة التحكم
-                    </Link>
-                  ) : role === "client" ? (
-                    <Link
-                      to="/portal"
-                      className="text-lg font-medium text-foreground/80 hover:text-primary transition-colors"
-                    >
-                      بوابة العملاء
                     </Link>
                   ) : null}
                   <Button
@@ -240,12 +220,6 @@ const Navbar = () => {
                 </>
               ) : (
                 <>
-                  <Link
-                    to="/signup"
-                    className="text-lg font-medium text-foreground/80 hover:text-primary transition-colors"
-                  >
-                    إنشاء حساب
-                  </Link>
                   <Link
                     to="/login"
                     className="text-lg font-medium text-foreground/80 hover:text-primary transition-colors"

@@ -19,6 +19,28 @@ export const supabase: SupabaseClient | null = (supabaseUrl && supabaseAnonKey)
   : null;
 
 /**
+ * Auth client that does not persist its session, used to sign up new staff
+ * accounts from the dashboard without replacing the logged-in manager's
+ * session. Memoized: repeated instances with the same storageKey trigger
+ * GoTrueClient multiple-instance warnings.
+ */
+let standaloneAuthClient: SupabaseClient | null = null;
+export function createStandaloneAuthClient(): SupabaseClient | null {
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  if (!standaloneAuthClient) {
+    standaloneAuthClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        storageKey: "rab3i-staff-signup",
+      },
+    });
+  }
+  return standaloneAuthClient;
+}
+
+/**
  * Validates and refreshes the current session.
  * Returns true if session is valid, false if it's invalid/expired.
  */

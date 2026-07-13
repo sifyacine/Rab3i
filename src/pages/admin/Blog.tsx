@@ -22,6 +22,7 @@ import { blogService, BlogPost } from "@/services/blogService";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRefresh } from "@/contexts/RefreshContext";
 import { cn } from "@/lib/utils";
+import { isStaffRole } from "@/lib/authSession";
 
 const Blog = () => {
   const navigate = useNavigate();
@@ -33,7 +34,7 @@ const Blog = () => {
   const { data: posts = [], isLoading } = useQuery({
     queryKey: ["admin-blog"],
     queryFn: () => blogService.getBlogPosts(),
-    enabled: role === "admin",
+    enabled: isStaffRole(role),
   });
 
   const deleteMutation = useMutation({

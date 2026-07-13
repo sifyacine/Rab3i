@@ -21,18 +21,19 @@ const menuItems = [
   { title: "الخدمات", icon: Star, url: "/admin/services" },
   { title: "الطلبات", icon: MessageSquare, url: "/admin/requests" },
   { title: "العملاء", icon: Building2, url: "/admin/clients" },
-  { title: "الفواتير", icon: FileText, url: "/admin/invoices" },
-  { title: "المستخدمون", icon: Users, url: "/admin/users" },
+  { title: "الفواتير", icon: FileText, url: "/admin/invoices", managerOnly: true },
+  { title: "المستخدمون", icon: Users, url: "/admin/users", managerOnly: true },
   { title: "محتوى الموقع", icon: LayoutDashboard, url: "/admin/site-content" },
-  { title: "الإعدادات", icon: Settings, url: "/admin/settings" },
+  { title: "الإعدادات", icon: Settings, url: "/admin/settings", managerOnly: true },
 ];
 
 function AdminSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, role } = useAuth();
   const { refreshData } = useRefresh();
+  const visibleItems = menuItems.filter((item) => !item.managerOnly || role === "manager");
   const [isLight, setIsLight] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("rabii-theme") === "light";
@@ -89,7 +90,7 @@ function AdminSidebar() {
           <SidebarGroupLabel>القائمة الرئيسية</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => {
+              {visibleItems.map((item) => {
                 const isActive = location.pathname === item.url ||
                   (item.url !== "/admin" && location.pathname.startsWith(item.url));
                 return (

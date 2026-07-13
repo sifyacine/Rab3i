@@ -10,7 +10,6 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 // Public Pages
 import Index from "./pages/public/Index";
 import Login from "./pages/Login";
-import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import About from "./pages/public/About";
@@ -47,21 +46,16 @@ import UserForm from "./pages/admin/UserForm";
 import Settings from "./pages/admin/Settings";
 import SiteContent from "./pages/admin/SiteContent";
 
-// Portal Pages
-import PortalLayout from "./components/portal/PortalLayout";
-import PortalDashboard from "./pages/portal/PortalDashboard";
-import PortalProjects from "./pages/portal/PortalProjects";
-import PortalProjectDetails from "./pages/portal/ProjectDetails";
-import PortalRequests from "./pages/portal/PortalRequests";
-import PortalInvoices from "./pages/portal/PortalInvoices";
-import PortalProfile from "./pages/portal/PortalProfile";
-import PortalSupport from "./pages/portal/PortalSupport";
-
 // Global & Edge Cases
 import Forbidden from "./pages/Forbidden";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+// Sections reserved for managers inside the shared dashboard
+const ManagerOnly = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute allowedRoles={["manager"]}>{children}</ProtectedRoute>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -82,15 +76,14 @@ const App = () => (
               <Route path="/about" element={<About />} />
               <Route path="/request" element={<ProjectRequest />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
 
-              {/* Admin Routes */}
+              {/* Dashboard Routes (managers & workers) */}
               <Route
                 path="/admin"
                 element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRoute allowedRoles={["manager", "worker"]}>
                     <AdminDashboardLayout />
                   </ProtectedRoute>
                 }
@@ -105,10 +98,10 @@ const App = () => (
                 <Route path="requests" element={<Requests />} />
                 <Route path="requests/:id" element={<RequestDetailsAdmin />} />
 
-                <Route path="invoices" element={<Invoices />} />
-                <Route path="invoices/new" element={<InvoiceForm />} />
-                <Route path="invoices/:id" element={<InvoiceDetailsAdmin />} />
-                <Route path="invoices/:id/edit" element={<InvoiceForm />} />
+                <Route path="invoices" element={<ManagerOnly><Invoices /></ManagerOnly>} />
+                <Route path="invoices/new" element={<ManagerOnly><InvoiceForm /></ManagerOnly>} />
+                <Route path="invoices/:id" element={<ManagerOnly><InvoiceDetailsAdmin /></ManagerOnly>} />
+                <Route path="invoices/:id/edit" element={<ManagerOnly><InvoiceForm /></ManagerOnly>} />
 
                 <Route path="clients" element={<Clients />} />
                 <Route path="clients/new" element={<ClientForm />} />
@@ -125,31 +118,13 @@ const App = () => (
                 <Route path="services/:id" element={<ServiceDetailsAdmin />} />
                 <Route path="services/:id/edit" element={<ServiceForm />} />
 
-                <Route path="users" element={<Users />} />
-                <Route path="users/new" element={<UserForm />} />
-                <Route path="users/:id" element={<UserDetailsAdmin />} />
-                <Route path="users/:id/edit" element={<UserForm />} />
+                <Route path="users" element={<ManagerOnly><Users /></ManagerOnly>} />
+                <Route path="users/new" element={<ManagerOnly><UserForm /></ManagerOnly>} />
+                <Route path="users/:id" element={<ManagerOnly><UserDetailsAdmin /></ManagerOnly>} />
+                <Route path="users/:id/edit" element={<ManagerOnly><UserForm /></ManagerOnly>} />
 
                 <Route path="site-content" element={<SiteContent />} />
-                <Route path="settings" element={<Settings />} />
-              </Route>
-
-              {/* Client Portal Routes */}
-              <Route
-                path="/portal"
-                element={
-                  <ProtectedRoute requiredRole="client">
-                    <PortalLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<PortalDashboard />} />
-                <Route path="projects" element={<PortalProjects />} />
-                <Route path="projects/:id" element={<PortalProjectDetails />} />
-                <Route path="requests" element={<PortalRequests />} />
-                <Route path="invoices" element={<PortalInvoices />} />
-                <Route path="profile" element={<PortalProfile />} />
-                <Route path="support" element={<PortalSupport />} />
+                <Route path="settings" element={<ManagerOnly><Settings /></ManagerOnly>} />
               </Route>
 
               {/* Edge Cases */}
