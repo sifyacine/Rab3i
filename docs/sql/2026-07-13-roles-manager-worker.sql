@@ -24,6 +24,13 @@
 -- select tgname from pg_trigger where tgrelid = 'auth.users'::regclass and not tgisinternal;
 
 -- ── 1. Migrate existing role values ──────────────────────────────────────────
+-- ⚠️ If profiles.role is a Postgres ENUM (type user_role) rather than text, the
+-- trigger in section 2 (and the app) cannot write 'pending'/'manager'/'worker'
+-- and you'll get: invalid input value for enum user_role. Run
+-- docs/sql/fix-role-enum.sql FIRST — it ADDs those values to the enum (it does
+-- not convert the column, because RLS policies depend on it). Then the legacy
+-- admin → manager remap below can be run as its own query.
+--
 -- If section 0 revealed a CHECK constraint on profiles.role, drop it first and
 -- recreate it at the end of this section.
 
