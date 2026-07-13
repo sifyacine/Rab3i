@@ -52,7 +52,8 @@ npm run lint
   - Public: **`src/pages/public/*`** (no signup page — accounts are created by managers from `/admin/users`)
   - Staff dashboard: **`src/pages/admin/*`** (nested under `/admin/*`)
 - Route protection: **`src/components/auth/ProtectedRoute.tsx`** (`allowedRoles` prop)
-- Roles: **`manager`** (full dashboard) and **`worker`** (dashboard minus Users/Settings/Invoices). Legacy `admin` DB values map to `manager` in code (`src/lib/authSession.ts`); legacy `client` accounts are denied. There is **no client portal** — clients are CRM records only. DB-side migration (run manually, step by step): `docs/sql/2026-07-13-roles-manager-worker.sql`.
+- Roles: **`manager`** (full dashboard) and **`worker`** (dashboard minus Users/Settings/Invoices/Tasks-management). Legacy `admin` DB values map to `manager` in code (`src/lib/authSession.ts`); legacy `client` accounts are denied. There is **no client portal** — clients are CRM records only. DB-side migration (run manually, step by step): `docs/sql/2026-07-13-roles-manager-worker.sql`.
+- Tasks: managers create/assign at `/admin/tasks`; workers work their queue at `/admin/my-tasks` (status + notes). No automatic notifications — the manager tells workers to check their tasks. Every staff member edits their own name/phone at `/admin/profile` (via the `update_own_profile` RPC, so `role` can't be self-changed).
 
 ## Supabase requirements
 
@@ -100,6 +101,10 @@ Service modules (read these first when debugging DB issues):
   - table: `clients` (CRM records only — no login)
 - `src/services/invoicesService.ts`
   - table: `invoices` (manager-only section)
+- `src/services/tasksService.ts`
+  - table: `tasks` (managers assign; workers read/update only their own via RLS)
+  - embeds: `profiles!assigned_to` (assignee), `projects!project_id`
+  - schema + RLS: `docs/sql/2026-07-13-tasks-system.sql` (also adds `profiles.phone` / `profiles.job_title` and the `update_own_profile` RPC)
 
 ## Testing
 

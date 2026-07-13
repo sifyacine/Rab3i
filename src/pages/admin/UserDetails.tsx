@@ -3,8 +3,10 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight, Edit, Trash, User, Shield,
-  Mail, Calendar, AlertCircle, Loader2
+  Mail, Calendar, AlertCircle, Loader2,
+  Phone, Briefcase, ClipboardList
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -22,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersService } from "@/services/usersService";
+import { tasksService, taskStatusConfig } from "@/services/tasksService";
 import { normalizeStaffRole } from "@/lib/authSession";
 
 const UserDetailsAdmin = () => {
@@ -34,6 +37,13 @@ const UserDetailsAdmin = () => {
     queryKey: ["user", id],
     queryFn: () => usersService.getUserById(id!),
     enabled: !!id,
+  });
+
+  const { data: userTasks = [] } = useQuery({
+    queryKey: ["user-tasks", id],
+    queryFn: () => tasksService.getTasksByAssignee(id!),
+    // Only workers have an assigned-tasks card — don't query for managers
+    enabled: !!id && normalizeStaffRole(user?.role) === "worker",
   });
 
   const deleteMutation = useMutation({
@@ -120,6 +130,14 @@ const UserDetailsAdmin = () => {
                 <p className="font-bold flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /> {roleDescription}</p>
               </div>
               <div className="space-y-1">
+                <Label className="text-muted-foreground">المسمى الوظيفي</Label>
+                <p className="font-medium flex items-center gap-2"><Briefcase className="h-4 w-4 text-primary" /> {user.job_title || "—"}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground">رقم الهاتف</Label>
+                <p className="font-medium flex items-center gap-2" dir="ltr"><Phone className="h-4 w-4 text-primary" /> {user.phone || "—"}</p>
+              </div>
+              <div className="space-y-1">
                 <Label className="text-muted-foreground">تاريخ الانضمام</Label>
                 <p className="font-medium flex items-center gap-2"><Calendar className="h-4 w-4 text-primary" /> {joinDate}</p>
               </div>
@@ -134,6 +152,43 @@ const UserDetailsAdmin = () => {
             </CardHeader>
             <CardContent className="text-sm text-pink-500/80 leading-relaxed">
               هذا الحساب يمتلك صلاحيات إدارية كاملة. يرجى الحذر عند تعديل بياناته أو صلاحياته لتجنب فقدان الوصول إلى لوحة التحكم.
+            </CardContent>
+          </Card>
+        )}
+
+        {staffRole === "worker" && (
+          <Card className="md:col-span-3 border-border/40 bg-card/30">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-primary" /> المهام المسندة ({userTasks.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {userTasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">لا توجد مهام مسندة لهذا الموظف</p>
+              ) : (
+                <div className="space-y-3">
+                  {userTasks.map((t) => (
+                    <Link
+                      key={t.id}
+                      to={`/admin/tasks/${t.id}/edit`}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-secondary/20 px-4 py-3 hover:bg-secondary/40 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{t.title}</p>
+                        {t.due_date && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            الاستحقاق: {new Date(t.due_date).toLocaleDateString("ar-SA")}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant="outline" className={cn("shrink-0 font-medium", taskStatusConfig[t.status]?.className)}>
+                        {taskStatusConfig[t.status]?.label ?? t.status}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

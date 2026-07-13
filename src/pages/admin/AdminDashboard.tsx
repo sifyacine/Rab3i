@@ -2,7 +2,8 @@ import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Briefcase, FileText, Settings, Users,
-  MessageSquare, Star, Building2, LogOut, PanelRight, Sun, Moon
+  MessageSquare, Star, Building2, LogOut, PanelRight, Sun, Moon,
+  ClipboardList, ClipboardCheck, UserCircle
 } from "lucide-react";
 import {
   SidebarProvider, Sidebar, SidebarContent, SidebarHeader,
@@ -16,6 +17,8 @@ import { useRefresh } from "@/contexts/RefreshContext";
 
 const menuItems = [
   { title: "لوحة القيادة", icon: LayoutDashboard, url: "/admin" },
+  { title: "المهام", icon: ClipboardList, url: "/admin/tasks", managerOnly: true },
+  { title: "مهامي", icon: ClipboardCheck, url: "/admin/my-tasks", workerOnly: true },
   { title: "المشاريع", icon: Briefcase, url: "/admin/projects" },
   { title: "المدونة", icon: FileText, url: "/admin/blog" },
   { title: "الخدمات", icon: Star, url: "/admin/services" },
@@ -23,6 +26,7 @@ const menuItems = [
   { title: "العملاء", icon: Building2, url: "/admin/clients" },
   { title: "الفواتير", icon: FileText, url: "/admin/invoices", managerOnly: true },
   { title: "المستخدمون", icon: Users, url: "/admin/users", managerOnly: true },
+  { title: "الملف الشخصي", icon: UserCircle, url: "/admin/profile" },
   { title: "محتوى الموقع", icon: LayoutDashboard, url: "/admin/site-content" },
   { title: "الإعدادات", icon: Settings, url: "/admin/settings", managerOnly: true },
 ];
@@ -33,7 +37,11 @@ function AdminSidebar() {
   const navigate = useNavigate();
   const { signOut, role } = useAuth();
   const { refreshData } = useRefresh();
-  const visibleItems = menuItems.filter((item) => !item.managerOnly || role === "manager");
+  const visibleItems = menuItems.filter(
+    (item) =>
+      (!item.managerOnly || role === "manager") &&
+      (!item.workerOnly || role === "worker")
+  );
   const [isLight, setIsLight] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("rabii-theme") === "light";

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   User, Mail, Shield, Save,
-  Key, AlertCircle, Loader2
+  Key, AlertCircle, Loader2, Phone, Briefcase
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,8 @@ const UserFormAdmin = () => {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AuthUserRole>("worker");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
 
   const { data: existingUser, isLoading: loadingUser } = useQuery({
     queryKey: ["user", id],
@@ -43,12 +45,21 @@ const UserFormAdmin = () => {
       setFullName(existingUser.full_name ?? "");
       setEmail(existingUser.email ?? "");
       setRole(normalizeStaffRole(existingUser.role) ?? "worker");
+      setPhone(existingUser.phone ?? "");
+      setJobTitle(existingUser.job_title ?? "");
     }
   }, [existingUser]);
 
   const createMutation = useMutation({
     mutationFn: () =>
-      usersService.createUser({ email: email.trim(), password, full_name: fullName.trim(), role }),
+      usersService.createUser({
+        email: email.trim(),
+        password,
+        full_name: fullName.trim(),
+        role,
+        phone: phone.trim() || undefined,
+        job_title: jobTitle.trim() || undefined,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       toast.success("تم إنشاء الحساب بنجاح. سيصل بريد تأكيد إلى المستخدم الجديد.");
@@ -64,7 +75,12 @@ const UserFormAdmin = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: () => usersService.updateUser(id!, { full_name: fullName.trim(), role }),
+    mutationFn: () => usersService.updateUser(id!, {
+      full_name: fullName.trim(),
+      role,
+      phone: phone.trim() || null,
+      job_title: jobTitle.trim() || null,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       queryClient.invalidateQueries({ queryKey: ["user", id] });
@@ -130,6 +146,22 @@ const UserFormAdmin = () => {
               <div className="relative">
                 <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input id="email" type="email" className="pr-10" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" disabled={isEditing} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="user-phone">رقم الهاتف</Label>
+                <div className="relative">
+                  <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input id="user-phone" dir="ltr" className="pr-10" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+966 5XXXXXXXX" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="user-job-title">المسمى الوظيفي</Label>
+                <div className="relative">
+                  <Briefcase className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input id="user-job-title" className="pr-10" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="مصمم، مطوّر، مسوّق..." />
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

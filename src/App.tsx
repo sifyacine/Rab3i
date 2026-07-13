@@ -43,6 +43,10 @@ import ServiceForm from "./pages/admin/ServiceForm";
 import Users from "./pages/admin/Users";
 import UserDetailsAdmin from "./pages/admin/UserDetails";
 import UserForm from "./pages/admin/UserForm";
+import Tasks from "./pages/admin/Tasks";
+import TaskForm from "./pages/admin/TaskForm";
+import MyTasks from "./pages/admin/MyTasks";
+import MyProfile from "./pages/admin/MyProfile";
 import Settings from "./pages/admin/Settings";
 import SiteContent from "./pages/admin/SiteContent";
 
@@ -122,6 +126,13 @@ const App = () => (
                 <Route path="users/new" element={<ManagerOnly><UserForm /></ManagerOnly>} />
                 <Route path="users/:id" element={<ManagerOnly><UserDetailsAdmin /></ManagerOnly>} />
                 <Route path="users/:id/edit" element={<ManagerOnly><UserForm /></ManagerOnly>} />
+
+                <Route path="tasks" element={<ManagerOnly><Tasks /></ManagerOnly>} />
+                <Route path="tasks/new" element={<ManagerOnly><TaskForm /></ManagerOnly>} />
+                <Route path="tasks/:id/edit" element={<ManagerOnly><TaskForm /></ManagerOnly>} />
+
+                <Route path="my-tasks" element={<MyTasks />} />
+                <Route path="profile" element={<MyProfile />} />
 
                 <Route path="site-content" element={<SiteContent />} />
                 <Route path="settings" element={<ManagerOnly><Settings /></ManagerOnly>} />

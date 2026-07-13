@@ -8,6 +8,8 @@ export interface Profile {
   email: string;
   role: string;
   full_name: string | null;
+  phone: string | null;
+  job_title: string | null;
   created_at: string;
 }
 
@@ -16,6 +18,8 @@ export interface CreateUserInput {
   password: string;
   full_name: string;
   role: AuthUserRole;
+  phone?: string;
+  job_title?: string;
 }
 
 export const usersService = {
@@ -36,6 +40,28 @@ export const usersService = {
       .single();
     if (error) throw error;
     return data as Profile;
+  },
+
+  // Workers list for the task-assignee dropdown
+  async getWorkers() {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'worker')
+      .order('full_name', { ascending: true });
+    if (error) throw error;
+    return data as Profile[];
+  },
+
+  // Self-service: edit own name/phone via the security-definer RPC
+  // (a direct profiles UPDATE policy could not prevent role changes).
+  // The RPC sets both columns directly, so an empty string clears the field.
+  async updateOwnProfile(input: { full_name: string; phone: string }) {
+    const { error } = await supabase.rpc('update_own_profile', {
+      new_full_name: input.full_name,
+      new_phone: input.phone,
+    });
+    if (error) throw error;
   },
 
   // Creates a staff account (manager/worker) from the dashboard.
@@ -70,6 +96,8 @@ export const usersService = {
         email: input.email,
         full_name: input.full_name,
         role: input.role,
+        phone: input.phone ?? null,
+        job_title: input.job_title ?? null,
       });
     if (profileError) throw profileError;
 

@@ -41,7 +41,7 @@ TypeScript is configured loosely (`strict: false`, unused-vars off in both tscon
 This is a single SPA serving **two distinct audiences**, split by route prefix and role:
 
 - **Public site** (`/`, `/services`, `/portfolio`, `/blog`, `/about`, `/request`, login/password pages) → `src/pages/public/*` and top-level `src/pages/*`. There is **no public signup** — staff accounts are created by managers from the dashboard's Users section.
-- **Staff dashboard** (`/admin/*`) → `src/pages/admin/*`, gated by `allowedRoles={["manager", "worker"]}`, wrapped in `AdminDashboardLayout`. The Users, Settings, and Invoices sections are additionally wrapped manager-only (`ManagerOnly` in `App.tsx`), and hidden from the sidebar for workers.
+- **Staff dashboard** (`/admin/*`) → `src/pages/admin/*`, gated by `allowedRoles={["manager", "worker"]}`, wrapped in `AdminDashboardLayout`. The Users, Settings, Invoices, and Tasks-management sections are additionally wrapped manager-only (`ManagerOnly` in `App.tsx`), and hidden from the sidebar for workers. Workers get `/admin/my-tasks` (their assigned tasks, status + notes updates) and everyone gets `/admin/profile`. Tasks have no notification system by design — the manager contacts workers directly. DB schema/RLS for tasks: `docs/sql/2026-07-13-tasks-system.sql`.
 
 There is **no client-facing portal**: clients exist only as CRM records (`clients` table, admin Clients section) and cannot log in.
 
