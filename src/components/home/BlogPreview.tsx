@@ -60,7 +60,7 @@ const BlogPreview = () => {
                       <span>{post.author}</span>
                       <span>
                         {post.published_at
-                          ? new Date(post.published_at).toLocaleDateString("ar-SA", {
+                          ? new Date(post.published_at).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn", {
                               year: "numeric",
                               month: "short",
                               day: "numeric",

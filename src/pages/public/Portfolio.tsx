@@ -362,7 +362,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
 
             <div className="flex items-center gap-1 text-xs text-muted-foreground pt-1">
               <Calendar className="h-3 w-3" />
-              {new Date(project.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short" })}
+              {new Date(project.created_at).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn", { year: "numeric", month: "short" })}
             </div>
           </div>
         </motion.div>

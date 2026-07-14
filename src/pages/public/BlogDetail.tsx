@@ -80,7 +80,7 @@ const BlogDetail = () => {
               <span>·</span>
               <span>
                 {post.published_at
-                  ? new Date(post.published_at).toLocaleDateString("ar-SA", {
+                  ? new Date(post.published_at).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn", {
                       year: "numeric",
                       month: "long",
                       day: "numeric",
@@ -124,7 +124,7 @@ const BlogDetail = () => {
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>المشاهدات: {post.views}</span>
                 <span className="text-xs text-muted-foreground/60">
-                  تم التحديث: {post.updated_at ? new Date(post.updated_at).toLocaleDateString("ar-SA") : "—"}
+                  تم التحديث: {post.updated_at ? new Date(post.updated_at).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn") : "—"}
                 </span>
               </div>
             </ScrollReveal>

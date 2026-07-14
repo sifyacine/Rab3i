@@ -73,7 +73,7 @@ const Projects = () => {
     { 
       header: "تاريخ الإنشاء", 
       accessorKey: "created_at",
-      cell: (item: Project) => new Date(item.created_at).toLocaleDateString('ar-SA')
+      cell: (item: Project) => new Date(item.created_at).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn')
     },
     { header: "المشاهدات", accessorKey: "views" as const },
   ];

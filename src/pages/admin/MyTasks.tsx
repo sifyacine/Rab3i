@@ -68,7 +68,7 @@ const TaskCard = ({ task }: { task: Task }) => {
           {task.due_date && (
             <span className={cn("flex items-center gap-1", overdue && "text-red-500 font-semibold")}>
               <Calendar className="h-3.5 w-3.5" />
-              {new Date(task.due_date).toLocaleDateString("ar-SA")}
+              {new Date(task.due_date).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn")}
               {overdue && " (متأخرة)"}
             </span>
           )}

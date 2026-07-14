@@ -62,7 +62,7 @@ const ClientDetailsAdmin = () => {
     );
   }
 
-  const joinDate = new Date(client.created_at).toLocaleDateString("ar-SA");
+  const joinDate = new Date(client.created_at).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn");
   const isActive = client.status === "active";
 
   return (

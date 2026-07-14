@@ -112,7 +112,7 @@ const BlogDetailsAdmin = () => {
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />{" "}
                 {post.published_at
-                  ? new Date(post.published_at).toLocaleDateString("ar-SA")
+                  ? new Date(post.published_at).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn")
                   : "—"}
               </span>
               <Badge variant="outline" className="text-[10px]">

@@ -84,7 +84,7 @@ const Tasks = () => {
       accessorKey: "due_date" as const,
       cell: (item: Task) => (
         <span className="text-sm text-muted-foreground">
-          {item.due_date ? new Date(item.due_date).toLocaleDateString("ar-SA") : "—"}
+          {item.due_date ? new Date(item.due_date).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn") : "—"}
         </span>
       ),
     },

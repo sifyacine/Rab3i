@@ -47,7 +47,7 @@ const InvoiceDetailsAdmin = () => {
     );
   }
 
-  const issued = new Date(invoice.created_at).toLocaleDateString("ar-SA");
+  const issued = new Date(invoice.created_at).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn");
   const status = statusConfig[invoice.status] ?? statusConfig.unpaid;
   const items = invoice.items ?? [];
 

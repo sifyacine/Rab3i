@@ -101,7 +101,7 @@ const UserDetailsAdmin = () => {
         ? "موظف — بدون الأقسام الإدارية"
         : "لا يملك صلاحية الوصول إلى لوحة التحكم";
   const displayName = user.full_name || user.email;
-  const joinDate = new Date(user.created_at).toLocaleDateString("ar-SA");
+  const joinDate = new Date(user.created_at).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn");
   const isSelf = user.id === currentUser?.id;
   const nextRole: "manager" | "worker" = staffRole === "manager" ? "worker" : "manager";
   const busy = roleMutation.isPending || banMutation.isPending || deleteMutation.isPending;
@@ -215,7 +215,7 @@ const UserDetailsAdmin = () => {
                         <p className="text-sm font-medium truncate">{t.title}</p>
                         {t.due_date && (
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            الاستحقاق: {new Date(t.due_date).toLocaleDateString("ar-SA")}
+                            الاستحقاق: {new Date(t.due_date).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn")}
                           </p>
                         )}
                       </div>

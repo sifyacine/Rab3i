@@ -8,6 +8,7 @@
 //
 // Actions (JSON body { action, ... }):
 //   create  { email, password, full_name, role, phone?, job_title? }
+//   update  { userId, full_name?, phone?, job_title? }   profile fields only
 //   set_role{ userId, role }                 role ∈ manager | worker
 //   delete  { userId }
 //   ban     { userId }                       indefinite ban (blocks login)
@@ -127,6 +128,24 @@ Deno.serve(async (req: Request) => {
         }
 
         return json({ ok: true, id: created.user.id });
+      }
+
+      case "update": {
+        // Profile fields only — a role change must go through set_role (which
+        // guards against self-demote), so "role" is deliberately ignored here.
+        const userId = String(body.userId ?? "");
+        if (!userId) return json({ error: "معرّف المستخدم مطلوب" }, 400);
+
+        const updates: Record<string, unknown> = {};
+        if ("full_name" in body) updates.full_name = body.full_name == null ? null : String(body.full_name).trim();
+        if ("phone" in body) updates.phone = body.phone == null ? null : (String(body.phone).trim() || null);
+        if ("job_title" in body) updates.job_title = body.job_title == null ? null : (String(body.job_title).trim() || null);
+
+        if (Object.keys(updates).length === 0) return json({ ok: true });
+
+        const { error } = await admin.from("profiles").update(updates).eq("id", userId);
+        if (error) return json({ error: error.message }, 400);
+        return json({ ok: true });
       }
 
       case "set_role": {

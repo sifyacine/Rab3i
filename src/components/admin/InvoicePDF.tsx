@@ -210,7 +210,7 @@ interface InvoicePDFProps {
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
-  return date.toLocaleDateString('ar-SA', {
+  return date.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
@@ -218,7 +218,7 @@ const formatDate = (dateStr: string) => {
 };
 
 const formatCurrency = (amount: number) => {
-  return amount.toLocaleString('ar-SA') + ' ⃁';
+  return amount.toLocaleString('ar-SA-u-ca-gregory-nu-latn') + ' ⃁';
 };
 
 const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, businessInfo }) => {

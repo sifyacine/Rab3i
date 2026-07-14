@@ -53,6 +53,7 @@ import SiteContent from "./pages/admin/SiteContent";
 // Global & Edge Cases
 import Forbidden from "./pages/Forbidden";
 import NotFound from "./pages/NotFound";
+import MaintenanceGate from "./components/MaintenanceGate";
 
 const queryClient = new QueryClient();
 
@@ -70,15 +71,19 @@ const App = () => (
         <RefreshProvider>
           <BrowserRouter>
             <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Index />} />
-              <Route path="/services" element={<PublicServices />} />
-              <Route path="/portfolio" element={<Portfolio />} />
-              <Route path="/portfolio/:slug" element={<ProjectDetails />} />
-              <Route path="/blog" element={<PublicBlog />} />
-              <Route path="/blog/:slug" element={<BlogDetail />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/request" element={<ProjectRequest />} />
+              {/* Public marketing routes — gated by maintenance mode (staff bypass) */}
+              <Route element={<MaintenanceGate />}>
+                <Route path="/" element={<Index />} />
+                <Route path="/services" element={<PublicServices />} />
+                <Route path="/portfolio" element={<Portfolio />} />
+                <Route path="/portfolio/:slug" element={<ProjectDetails />} />
+                <Route path="/blog" element={<PublicBlog />} />
+                <Route path="/blog/:slug" element={<BlogDetail />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/request" element={<ProjectRequest />} />
+              </Route>
+
+              {/* Auth routes stay reachable during maintenance so staff can log in */}
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />

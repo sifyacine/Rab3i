@@ -81,7 +81,7 @@ const Blog = () => {
     {
       header: "المشاهدات",
       accessorKey: "views" as const,
-      cell: (item: BlogPost) => <span className="font-medium">{item.views.toLocaleString("ar-SA")}</span>,
+      cell: (item: BlogPost) => <span className="font-medium">{item.views.toLocaleString("ar-SA-u-ca-gregory-nu-latn")}</span>,
     },
   ];
 
