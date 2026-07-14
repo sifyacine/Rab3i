@@ -3,6 +3,7 @@ import { Briefcase, MessageSquare, Users, TrendingUp, Loader2, RefreshCw } from 
 import { useQuery } from "@tanstack/react-query";
 import { projectsService } from "@/services/projectsService";
 import { requestsService, RequestStatus } from "@/services/requestsService";
+import { clientsService } from "@/services/clientsService";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -45,6 +46,13 @@ const DashboardHome = () => {
     enabled: isStaffRole(role)
   });
 
+  const { data: clients } = useQuery({
+    queryKey: ["admin-clients"],
+    queryFn: () => clientsService.getClients(),
+    enabled: isStaffRole(role)
+  });
+  const activeClients = clients?.filter((c) => c.status === "active").length ?? 0;
+
   // Show loading if auth is still loading OR queries are loading
   const isLoading = authLoading || statsLoading || requestsLoading;
 
@@ -56,7 +64,7 @@ const DashboardHome = () => {
     { label: "المشاريع", value: stats?.projects || 0, icon: Briefcase, color: "text-blue-400" },
     { label: "الطلبات الجديدة", value: stats?.newRequests || 0, icon: MessageSquare, color: "text-amber-400" },
     { label: "إجمالي الطلبات", value: stats?.totalRequests || 0, icon: TrendingUp, color: "text-emerald-400" },
-    { label: "العملاء النشطون", value: stats?.projects || 0, icon: Users, color: "text-primary" },
+    { label: "العملاء النشطون", value: activeClients, icon: Users, color: "text-primary" },
   ];
 
   if (isLoading) {

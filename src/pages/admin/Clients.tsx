@@ -92,14 +92,22 @@ const Clients = () => {
               <Edit className="h-4 w-4" />
               تعديل بيانات
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-              <Mail className="h-4 w-4" />
-              مراسلة
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-              <Phone className="h-4 w-4" />
-              اتصال
-            </DropdownMenuItem>
+            {item.email && (
+              <DropdownMenuItem asChild className="gap-2 cursor-pointer">
+                <a href={`mailto:${item.email}`} onClick={(e) => e.stopPropagation()}>
+                  <Mail className="h-4 w-4" />
+                  مراسلة
+                </a>
+              </DropdownMenuItem>
+            )}
+            {item.phone && (
+              <DropdownMenuItem asChild className="gap-2 cursor-pointer">
+                <a href={`tel:${item.phone}`} onClick={(e) => e.stopPropagation()}>
+                  <Phone className="h-4 w-4" />
+                  اتصال
+                </a>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem 
               className="gap-2 cursor-pointer text-destructive focus:text-destructive" 
               onClick={(e) => {

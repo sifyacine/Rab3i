@@ -1,13 +1,13 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { 
-  ArrowRight, Edit, Trash, CheckCircle2, 
-  Tag, Info, DollarSign, Layers, XCircle
+import {
+  ArrowRight, Edit, Trash, CheckCircle2,
+  DollarSign, XCircle, Loader2, Hash
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,32 +19,54 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { servicesService } from "@/services/servicesService";
 
 const ServiceDetailsAdmin = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
-  // Mock service data
-  const service = {
-    id: "1", 
-    name: "تصميم وتطوير المواقع", 
-    category: "تطوير ويب",
-    price: "تبدأ من 500 ⃁", 
-    status: "active",
-    description: "تصميم وتطوير مواقع احترافية سريعة ومتجاوبة مع كافة الشاشات. نركز على تجربة المستخدم والأداء العالي لضمان نجاح أعمالك على الإنترنت.",
-    features: ["تصميم عصري وجذاب", "لوحة تحكم سهلة الإدارة", "تحسين محركات البحث الأساسي", "استضافة مجانية لأول شهر", "دعم فني مستمر لمدة 3 أشهر"],
-  };
+  const { data: service, isLoading } = useQuery({
+    queryKey: ["service", id],
+    queryFn: () => servicesService.getServiceById(id!),
+    enabled: !!id,
+  });
 
-  const confirmDelete = () => {
-    toast.success("تم حذف الخدمة بنجاح");
-    navigate("/admin/services");
-  };
+  const deleteMutation = useMutation({
+    mutationFn: () => servicesService.deleteService(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-services"] });
+      toast.success("تم حذف الخدمة بنجاح");
+      navigate("/admin/services");
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحذف"),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
+      </div>
+    );
+  }
+
+  if (!service) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <p className="text-muted-foreground">لم يتم العثور على الخدمة</p>
+        <Button variant="outline" asChild><Link to="/admin/services">العودة للخدمات</Link></Button>
+      </div>
+    );
+  }
+
+  const pricing = [service.price_from, service.price_note_ar].filter(Boolean).join(" ") || "—";
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       className="space-y-6 max-w-5xl mx-auto"
       dir="rtl"
     >
@@ -55,15 +77,14 @@ const ServiceDetailsAdmin = () => {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold">{service.name}</h1>
-              <Badge variant={service.status === 'active' ? 'default' : 'secondary'}>
-                {service.status === "active" ? "نشط" : "غير نشط"}
+              <h1 className="text-3xl font-bold">{service.title_ar}</h1>
+              <Badge variant={service.is_active ? "default" : "secondary"}>
+                {service.is_active ? "نشط" : "غير نشط"}
               </Badge>
             </div>
-            <p className="text-muted-foreground flex items-center gap-2 mt-1">
-              <Tag className="h-3.5 w-3.5" />
-              {service.category}
-            </p>
+            {service.title_en && (
+              <p className="text-muted-foreground flex items-center gap-2 mt-1">{service.title_en}</p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -78,28 +99,24 @@ const ServiceDetailsAdmin = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          {service.image_url && (
+            <Card className="border-border/40 bg-card/50 overflow-hidden">
+              <img src={service.image_url} alt={service.title_ar} className="w-full max-h-72 object-cover" />
+            </Card>
+          )}
           <Card className="border-border/40 bg-card/50">
             <CardHeader>
               <CardTitle className="text-xl">وصف الخدمة</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="leading-relaxed text-muted-foreground">{service.description}</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/40 bg-card/50">
-            <CardHeader>
-              <CardTitle className="text-xl">المميزات والخصائص</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {service.features.map((feature, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 rounded-xl bg-secondary/20 border border-border/40">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
-                    <span className="text-sm">{feature}</span>
-                  </div>
-                ))}
-              </div>
+            <CardContent className="space-y-4">
+              <p className="leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                {service.description_ar || "لا يوجد وصف بعد."}
+              </p>
+              {service.description_en && (
+                <p className="leading-relaxed text-muted-foreground/80 text-sm" dir="ltr">
+                  {service.description_en}
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -110,35 +127,33 @@ const ServiceDetailsAdmin = () => {
               <CardTitle className="text-lg">معلومات التسعير والحالة</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
-                    <DollarSign className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">التسعير</p>
-                    <p className="font-bold text-lg">{service.price}</p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+                  <DollarSign className="h-5 w-5" />
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${service.status === 'active' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-secondary text-muted-foreground'}`}>
-                    {service.status === 'active' ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">حالة الظهور</p>
-                    <p className="font-bold">{service.status === "active" ? "منشورة على الموقع" : "مخفية"}</p>
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">التسعير</p>
+                  <p className="font-bold text-lg">{pricing}</p>
                 </div>
+              </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
-                    <Layers className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">الفئة الرئيسية</p>
-                    <p className="font-bold">{service.category}</p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${service.is_active ? "bg-emerald-500/10 text-emerald-500" : "bg-secondary text-muted-foreground"}`}>
+                  {service.is_active ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">حالة الظهور</p>
+                  <p className="font-bold">{service.is_active ? "منشورة على الموقع" : "مخفية"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+                  <Hash className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">المُعرّف (slug)</p>
+                  <p className="font-bold font-sans text-sm" dir="ltr">{service.slug}</p>
                 </div>
               </div>
             </CardContent>
@@ -156,7 +171,7 @@ const ServiceDetailsAdmin = () => {
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:justify-start">
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               تأكيد الحذف
             </AlertDialogAction>
           </AlertDialogFooter>

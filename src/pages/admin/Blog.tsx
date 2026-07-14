@@ -5,7 +5,7 @@ import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Edit, Eye, Trash, MessageSquare, Loader2, RefreshCw } from "lucide-react";
+import { Edit, Eye, Trash, Loader2, RefreshCw } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -147,10 +147,6 @@ const Blog = () => {
             >
               <Edit className="h-4 w-4" />
               تعديل
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer">
-              <MessageSquare className="h-4 w-4" />
-              التعليقات
             </DropdownMenuItem>
             <DropdownMenuItem
               className="gap-2 cursor-pointer text-destructive focus:text-destructive"

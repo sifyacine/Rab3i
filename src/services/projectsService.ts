@@ -70,6 +70,21 @@ export const projectsService = {
     } as Project;
   },
 
+  async getProjectById(id: string) {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*, category:categories(*), project_media(*), services:project_services(service:services(*))')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+
+    const proj = data as unknown as ProjectWithJunction;
+    return {
+      ...proj,
+      services: proj.services?.map(ps => ps.service).filter(Boolean) ?? [],
+    } as Project;
+  },
 
   async createProject(project: CreateProjectDTO) {
     const payload = {
