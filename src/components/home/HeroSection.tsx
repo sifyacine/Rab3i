@@ -1,8 +1,14 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Play } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { siteContentService, SITE_CONTENT_DEFAULTS } from "@/services/siteContentService";
 
 const HeroSection = () => {
+  const { data } = useQuery({ queryKey: ["site-content"], queryFn: () => siteContentService.getSiteContent() });
+  const heroTitle = data?.hero_title || SITE_CONTENT_DEFAULTS.hero_title;
+  const heroSubtitle = data?.hero_subtitle || SITE_CONTENT_DEFAULTS.hero_subtitle;
+
   return (
     <section className="relative flex min-h-screen items-center justify-center overflow-hidden">
       {/* Animated gradient background */}
@@ -70,7 +76,7 @@ const HeroSection = () => {
         >
           رُبْعي
           <br />
-          <span className="text-gradient">شريكك في المجلس… وقسمك الرابع في السوق</span>
+          <span className="text-gradient">{heroTitle}</span>
         </motion.h1>
 
         <motion.p
@@ -80,8 +86,7 @@ const HeroSection = () => {
           className="mx-auto mb-10 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
           style={{ textWrap: "pretty" }}
         >
-          في رُبْعي نشتغل معك كأننا جزء من فريقك.
-          نجلس في المجلس، نفهم مشروعك، ونبني تسويق يخدم النمو الحقيقي — مو مجرد حملات.
+          {heroSubtitle}
         </motion.p>
 
         <motion.div

@@ -1,8 +1,14 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, Calendar, MessageSquare } from "lucide-react";
+import { Calendar, MessageSquare } from "lucide-react";
 import ScrollReveal from "../ScrollReveal";
+import { useQuery } from "@tanstack/react-query";
+import { siteContentService, SITE_CONTENT_DEFAULTS } from "@/services/siteContentService";
 
-const CTASection = () => (
+const CTASection = () => {
+  const { data } = useQuery({ queryKey: ["site-content"], queryFn: () => siteContentService.getSiteContent() });
+  const ctaText = data?.cta_text || SITE_CONTENT_DEFAULTS.cta_text;
+
+  return (
   <section className="relative py-32 overflow-hidden">
     <div className="absolute inset-0 animate-gradient bg-gradient-to-br from-[hsl(0,84%,15%)] via-[hsl(350,70%,10%)] to-[hsl(10,60%,12%)] bg-[length:300%_300%]" />
     <div className="absolute inset-0 opacity-[0.04]" style={{
@@ -37,12 +43,13 @@ const CTASection = () => (
             className="group flex items-center gap-2 rounded-xl border border-border/50 bg-secondary/50 px-8 py-3.5 text-sm font-semibold text-foreground/90 transition-all duration-300 hover:border-primary/30 hover:bg-secondary active:scale-[0.97]"
           >
             <MessageSquare size={16} />
-            تواصل معنا
+            {ctaText}
           </Link>
         </div>
       </ScrollReveal>
     </div>
   </section>
-);
+  );
+};
 
 export default CTASection;

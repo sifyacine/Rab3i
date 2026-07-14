@@ -1,8 +1,12 @@
 import ScrollReveal from "../ScrollReveal";
+import { useQuery } from "@tanstack/react-query";
+import { siteContentService, SITE_CONTENT_DEFAULTS } from "@/services/siteContentService";
 
-const clients = ["شركة النخبة", "مجموعة الريادة", "تقنية المستقبل", "منصة ابتكار", "حلول رقمية", "شركة الأفق", "مؤسسة البناء", "شركة المسار"];
+const ClientsSection = () => {
+  const { data } = useQuery({ queryKey: ["site-content"], queryFn: () => siteContentService.getSiteContent() });
+  const clients = data?.partners && data.partners.length ? data.partners : SITE_CONTENT_DEFAULTS.partners;
 
-const ClientsSection = () => (
+  return (
   <section className="border-y border-border/30 py-24 overflow-hidden">
     <div className="container mx-auto px-6">
       <ScrollReveal className="mb-12 text-center">
@@ -26,6 +30,7 @@ const ClientsSection = () => (
       </div>
     </div>
   </section>
-);
+  );
+};
 
 export default ClientsSection;

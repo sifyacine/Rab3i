@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,36 +6,88 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Save, Layout, ListChecks, MessageSquare, Image as ImageIcon, Building2 } from "lucide-react";
+import { Save, Layout, ListChecks, MessageSquare, Building2, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { siteContentService, SITE_CONTENT_DEFAULTS } from "@/services/siteContentService";
+
+interface EditableContent {
+  heroTitle: string;
+  heroSubtitle: string;
+  ctaText: string;
+  processSteps: { title: string; description: string }[];
+  partners: string[];
+}
 
 const SiteContent = () => {
-  const [loading, setLoading] = useState(false);
-  const [content, setContent] = useState({
-    heroTitle: "نحول رؤيتك الرقمية إلى واقع ملموس",
-    heroSubtitle: "استوديو إبداعي متخصص في بناء التجارب الرقمية الفريدة التي تجمع بين الفن والتقنية",
-    processSteps: [
-      { id: 1, title: "التحليل والتخطيط", description: "نبدأ بفهم عميق لأهدافك وجمهورك مستهدف" },
-      { id: 2, title: "التصميم الإبداعي", description: "نبتكر هوية بصرية وتجربة مستخدم لا تُنسى" },
-      { id: 3, title: "التطوير البرمجي", description: "نحول التصاميم إلى كود عالي الأداء وقابل للتوسع" },
-      { id: 4, title: "الإطلاق والدعم", description: "نرافقك في مرحلة الإطلاق ونضمن استمرارية النجاح" }
-    ],
-    partners: ["شركة النخبة", "مجموعة الريادة", "تقنية المستقبل", "منصة ابتكار", "حلول رقمية", "شركة الأفق", "مؤسسة البناء", "شركة المسار"],
-    ctaText: "ابدأ مشروعك الآن"
+  const queryClient = useQueryClient();
+
+  const { data: siteContent, isLoading } = useQuery({
+    queryKey: ["site-content"],
+    queryFn: () => siteContentService.getSiteContent(),
   });
 
-  const handleSave = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+  const [content, setContent] = useState<EditableContent | null>(null);
+
+  // Seed the editor once the query settles (success OR error), falling back to
+  // the built-in homepage copy — so a load error still yields an editable form
+  // instead of an infinite spinner.
+  useEffect(() => {
+    if (isLoading || content) return;
+    const c = siteContent;
+    setContent({
+      heroTitle: c?.hero_title ?? SITE_CONTENT_DEFAULTS.hero_title,
+      heroSubtitle: c?.hero_subtitle ?? SITE_CONTENT_DEFAULTS.hero_subtitle,
+      ctaText: c?.cta_text ?? SITE_CONTENT_DEFAULTS.cta_text,
+      processSteps:
+        c?.process_steps && c.process_steps.length
+          ? c.process_steps.map((s) => ({ title: s.title, description: s.description }))
+          : SITE_CONTENT_DEFAULTS.process_steps.map((s) => ({ ...s })),
+      partners:
+        c?.partners && c.partners.length
+          ? [...c.partners]
+          : [...SITE_CONTENT_DEFAULTS.partners],
+    });
+  }, [isLoading, siteContent, content]);
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      siteContentService.updateSiteContent({
+        // Store cleared fields as null so "cleared" reads back as the default
+        // both in the editor and on the public homepage.
+        hero_title: content!.heroTitle.trim() || null,
+        hero_subtitle: content!.heroSubtitle.trim() || null,
+        cta_text: content!.ctaText.trim() || null,
+        process_steps: content!.processSteps
+          .map((s) => ({ title: s.title.trim(), description: s.description.trim() }))
+          .filter((s) => s.title || s.description),
+        partners: content!.partners.map((p) => p.trim()).filter(Boolean),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["site-content"] });
       toast.success("تم تحديث محتوى الموقع بنجاح");
-    }, 1000);
-  };
+    },
+    onError: () => toast.error("حدث خطأ أثناء حفظ المحتوى"),
+  });
+
+  if (isLoading || !content) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
+      </div>
+    );
+  }
+
+  const setStep = (index: number, patch: Partial<{ title: string; description: string }>) =>
+    setContent({
+      ...content,
+      processSteps: content.processSteps.map((s, i) => (i === index ? { ...s, ...patch } : s)),
+    });
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }} 
-      animate={{ opacity: 1, y: 0 }} 
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
       dir="rtl"
     >
@@ -44,14 +96,14 @@ const SiteContent = () => {
           <h1 className="text-2xl font-bold">إدارة محتوى الموقع</h1>
           <p className="text-sm text-muted-foreground mt-1">تحكم في النصوص والأقسام التي تظهر في الصفحة الرئيسية</p>
         </div>
-        <Button onClick={handleSave} disabled={loading} className="bg-gradient-brand shadow-lg">
-          <Save className="ml-2 h-4 w-4" />
-          {loading ? "جاري الحفظ..." : "حفظ التغييرات"}
+        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="bg-gradient-brand shadow-lg">
+          {saveMutation.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}
+          {saveMutation.isPending ? "جاري الحفظ..." : "حفظ التغييرات"}
         </Button>
       </div>
 
       <Tabs defaultValue="hero" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-secondary/50 rounded-xl p-1">
+        <TabsList className="grid w-full grid-cols-4 bg-secondary/50 rounded-xl p-1">
           <TabsTrigger value="hero" className="rounded-lg gap-2">
             <Layout className="h-4 w-4" /> القسم الرئيسي
           </TabsTrigger>
@@ -75,19 +127,19 @@ const SiteContent = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="heroTitle">العنوان الرئيسي</Label>
-                <Input 
-                  id="heroTitle" 
-                  value={content.heroTitle} 
-                  onChange={(e) => setContent({...content, heroTitle: e.target.value})}
+                <Input
+                  id="heroTitle"
+                  value={content.heroTitle}
+                  onChange={(e) => setContent({ ...content, heroTitle: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="heroSubtitle">العنوان الفرعي</Label>
-                <Textarea 
-                  id="heroSubtitle" 
+                <Textarea
+                  id="heroSubtitle"
                   rows={3}
-                  value={content.heroSubtitle} 
-                  onChange={(e) => setContent({...content, heroSubtitle: e.target.value})}
+                  value={content.heroSubtitle}
+                  onChange={(e) => setContent({ ...content, heroSubtitle: e.target.value })}
                 />
               </div>
             </CardContent>
@@ -98,36 +150,22 @@ const SiteContent = () => {
           <Card className="border-border/40 bg-card/30">
             <CardHeader>
               <CardTitle>خطوات العمل (How We Work)</CardTitle>
-              <CardDescription>الخطوات الأربع التي تظهر في قسم منهجية العمل</CardDescription>
+              <CardDescription>الخطوات التي تظهر في قسم منهجية العمل</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {content.processSteps.map((step, index) => (
-                <div key={step.id} className="p-4 rounded-xl border border-border/20 bg-background/30 space-y-4">
+                <div key={index} className="p-4 rounded-xl border border-border/20 bg-background/30 space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">الخطوة {index + 1}</span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>عنوان الخطوة</Label>
-                      <Input 
-                        value={step.title} 
-                        onChange={(e) => {
-                          const newSteps = [...content.processSteps];
-                          newSteps[index].title = e.target.value;
-                          setContent({...content, processSteps: newSteps});
-                        }}
-                      />
+                      <Input value={step.title} onChange={(e) => setStep(index, { title: e.target.value })} />
                     </div>
                     <div className="space-y-2">
                       <Label>الوصف</Label>
-                      <Input 
-                        value={step.description} 
-                        onChange={(e) => {
-                          const newSteps = [...content.processSteps];
-                          newSteps[index].description = e.target.value;
-                          setContent({...content, processSteps: newSteps});
-                        }}
-                      />
+                      <Input value={step.description} onChange={(e) => setStep(index, { description: e.target.value })} />
                     </div>
                   </div>
                 </div>
@@ -140,15 +178,15 @@ const SiteContent = () => {
           <Card className="border-border/40 bg-card/30">
             <CardHeader>
               <CardTitle>أزرار ونداءات العمل</CardTitle>
-              <CardDescription>تخصيص نصوص الأزرار والروابط السريعة</CardDescription>
+              <CardDescription>تخصيص نص زر «تواصل معنا» في قسم نداء العمل بأسفل الصفحة</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="cta">نص زر "تواصل معنا"</Label>
-                <Input 
-                  id="cta" 
-                  value={content.ctaText} 
-                  onChange={(e) => setContent({...content, ctaText: e.target.value})}
+                <Input
+                  id="cta"
+                  value={content.ctaText}
+                  onChange={(e) => setContent({ ...content, ctaText: e.target.value })}
                 />
               </div>
             </CardContent>
@@ -162,13 +200,13 @@ const SiteContent = () => {
                 <CardTitle>شركاء النجاح</CardTitle>
                 <CardDescription>إدارة أسماء الشركات التي تظهر في شريط الشركاء</CardDescription>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="gap-2"
                 onClick={() => {
                   const name = prompt("أدخل اسم الشريك الجديد:");
-                  if (name) setContent({...content, partners: [...content.partners, name]});
+                  if (name) setContent({ ...content, partners: [...content.partners, name] });
                 }}
               >
                 إضافة شريك
@@ -179,14 +217,11 @@ const SiteContent = () => {
                 {content.partners.map((partner, index) => (
                   <div key={index} className="flex items-center justify-between p-3 rounded-xl border border-border/20 bg-background/30 group">
                     <span className="text-sm">{partner}</span>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => {
-                        const newPartners = content.partners.filter((_, i) => i !== index);
-                        setContent({...content, partners: newPartners});
-                      }}
+                      onClick={() => setContent({ ...content, partners: content.partners.filter((_, i) => i !== index) })}
                     >
                       ×
                     </Button>

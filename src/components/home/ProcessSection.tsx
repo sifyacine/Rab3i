@@ -1,31 +1,17 @@
 import { motion } from "framer-motion";
 import ScrollReveal from "../ScrollReveal";
 import { Search, Map, PenTool, TrendingUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { siteContentService, SITE_CONTENT_DEFAULTS } from "@/services/siteContentService";
 
-const steps = [
-  {
-    icon: Search,
-    title: "تحليل",
-    description: "نفهم مشروعك من الداخل قبل ما نفكر بالسوق ونفهم جمهورك لنصنع رسالة تناسبهم."
-  },
-  {
-    icon: Map,
-    title: "تخطيط",
-    description: "نبني استراتيجية واضحة مبنية على أرقام وواقع ونصمم خطة اتصال واضحة تخاطب الجمهور بفعالية."
-  },
-  {
-    icon: PenTool,
-    title: "تنفيذ",
-    description: "نصمم هوية، ونقدم محتوى مبدعاً وعالي الجودة يلفت الانتباه ويؤثر في أنظمة التسويق."
-  },
-  {
-    icon: TrendingUp,
-    title: "تحسين",
-    description: "نراقب النتائج ونحسن أداءنا باستمرار لضمان النجاح."
-  }
-];
+// Icons are cycled by index over whatever steps the CMS provides.
+const ICONS = [Search, Map, PenTool, TrendingUp];
 
-const ProcessSection = () => (
+const ProcessSection = () => {
+  const { data } = useQuery({ queryKey: ["site-content"], queryFn: () => siteContentService.getSiteContent() });
+  const steps = data?.process_steps && data.process_steps.length ? data.process_steps : SITE_CONTENT_DEFAULTS.process_steps;
+
+  return (
   <section className="py-32 relative overflow-hidden" dir="rtl">
     <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border/50 to-transparent" />
     
@@ -44,7 +30,9 @@ const ProcessSection = () => (
         <div className="hidden lg:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-dashed border-border/30" />
         
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-          {steps.map((step, i) => (
+          {steps.map((step, i) => {
+            const Icon = ICONS[i % ICONS.length];
+            return (
             <ScrollReveal key={i} delay={i * 0.1} className="relative">
               <motion.div
                 whileHover={{ y: -8 }}
@@ -54,7 +42,7 @@ const ProcessSection = () => (
                 <div className="relative inline-flex">
                   <div className="absolute -inset-4 rounded-full bg-primary/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   <div className="relative w-20 h-20 rounded-full bg-gradient-brand flex items-center justify-center text-white shadow-lg shadow-primary/25">
-                    <step.icon size={32} />
+                    <Icon size={32} />
                   </div>
                 </div>
                 
@@ -72,13 +60,15 @@ const ProcessSection = () => (
                 </p>
               </motion.div>
             </ScrollReveal>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
-    
+
     <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border/50 to-transparent" />
   </section>
-);
+  );
+};
 
 export default ProcessSection;
