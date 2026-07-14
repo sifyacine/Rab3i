@@ -55,7 +55,18 @@ import Forbidden from "./pages/Forbidden";
 import NotFound from "./pages/NotFound";
 import MaintenanceGate from "./components/MaintenanceGate";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Show cached data instantly on refresh/navigation instead of a spinner,
+      // don't refetch on every window focus, and fail fast (1 retry) so errors
+      // surface quickly rather than hanging through the default 3 retries.
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 // Sections reserved for managers inside the shared dashboard
 const ManagerOnly = ({ children }: { children: React.ReactNode }) => (

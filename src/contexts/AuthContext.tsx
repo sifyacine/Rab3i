@@ -27,6 +27,37 @@ const withTimeout = <T,>(promise: PromiseLike<T>, timeoutMs: number, label: stri
 
 const normalizeRole = normalizeStaffRole;
 
+// Cache the resolved role so a page refresh renders instantly instead of waiting
+// on (or being logged out by) a slow/failed DB role lookup. The client-side role
+// is only UI gating — RLS and the manage-users edge function are the real
+// security boundary — so caching it is safe.
+const ROLE_CACHE_KEY = "rab3i-role";
+const readCachedRole = (userId: string): UserRole | null => {
+  try {
+    const raw = localStorage.getItem(ROLE_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { userId?: string; role?: string };
+    return parsed.userId === userId ? normalizeRole(parsed.role) : null;
+  } catch {
+    return null;
+  }
+};
+const writeCachedRole = (userId: string, role: UserRole | null) => {
+  try {
+    if (role) localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({ userId, role }));
+    else localStorage.removeItem(ROLE_CACHE_KEY);
+  } catch {
+    /* ignore storage errors */
+  }
+};
+const clearCachedRole = () => {
+  try {
+    localStorage.removeItem(ROLE_CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
+};
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -59,8 +90,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── Role resolver ──────────────────────────────────────────────────────────
   // Resolves to null when the account has no staff role (e.g. legacy client
   // accounts or lookup failures) — the app fails closed and denies access.
-  const resolveRole = useCallback(async (userId: string, metadataRole?: unknown): Promise<UserRole | null> => {
-    if (!supabase) return null;
+  // Returns { role, definitive }. `definitive` is true only when the DB gave an
+  // authoritative answer (profile read succeeded, or the row is confirmed gone).
+  // A transient failure (network/timeout) is NON-definitive, so callers can keep
+  // a cached role instead of logging the user out on a hiccup.
+  const resolveRole = useCallback(async (userId: string, metadataRole?: unknown): Promise<{ role: UserRole | null; definitive: boolean }> => {
+    if (!supabase) return { role: null, definitive: false };
     try {
       const { data, error } = await withTimeout(
         supabase
@@ -72,31 +107,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         "profiles role lookup"
       );
 
-      // The profile row is authoritative: a non-staff role there means no access
-      if (!error && data?.role) {
-        return normalizeRole(data.role);
+      // Query succeeded: the profiles row is authoritative. A non-staff value
+      // normalizes to null = a DEFINITIVE denial (revoke), not a transient error.
+      if (!error) {
+        return { role: normalizeRole(data?.role), definitive: true };
+      }
+      // "No rows" (deleted profile / hidden by RLS) is also a definitive denial.
+      if ((error as { code?: string }).code === "PGRST116") {
+        return { role: null, definitive: true };
       }
 
-      // Fallback to user metadata from current event/session
+      // Other (transient) DB error → non-definitive; fall back without revoking.
       const roleFromMetadata = normalizeRole(metadataRole);
-      if (roleFromMetadata) return roleFromMetadata;
+      if (roleFromMetadata) return { role: roleFromMetadata, definitive: false };
 
-      // Final fallback to live auth user metadata (if same user)
-      const {
-        data: { user: authUser },
-      } = await withTimeout(
-        supabase.auth.getUser(),
-        AUTH_ASYNC_TIMEOUT_MS,
-        "auth user lookup"
-      );
-
-      if (authUser?.id === userId) {
-        return normalizeRole(authUser.user_metadata?.role);
+      try {
+        const {
+          data: { user: authUser },
+        } = await withTimeout(supabase.auth.getUser(), AUTH_ASYNC_TIMEOUT_MS, "auth user lookup");
+        if (authUser?.id === userId) {
+          return { role: normalizeRole(authUser.user_metadata?.role), definitive: false };
+        }
+      } catch {
+        /* ignore — treated as transient below */
       }
-
-      return null;
+      return { role: null, definitive: false };
     } catch {
-      return normalizeRole(metadataRole);
+      // Timeout / network throw → transient; keep any metadata role, don't revoke.
+      return { role: normalizeRole(metadataRole), definitive: false };
     }
   }, []);
 
@@ -121,16 +159,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isMounted) return;
 
         if (storedSession?.user) {
+          const uid = storedSession.user.id;
           setSession(storedSession);
           setUser(storedSession.user);
           setSessionValid(true);
-          const resolvedRole = await resolveRole(
-            storedSession.user.id,
-            storedSession.user.user_metadata?.role
-          );
-          if (!isMounted) return;
-          setRole(resolvedRole);
-          currentUserIdRef.current = storedSession.user.id;
+          currentUserIdRef.current = uid;
+
+          const cached = readCachedRole(uid);
+          if (cached) {
+            // Render immediately with the cached role (fast refresh, stays
+            // logged in), then revalidate against the DB in the background.
+            setRole(cached);
+            resolveRole(uid, storedSession.user.user_metadata?.role)
+              .then((res) => {
+                // Identity guard: ignore if the user switched while in flight.
+                if (!isMounted || currentUserIdRef.current !== uid) return;
+                // Apply a DEFINITIVE result (revoke on definitive null) or any
+                // resolved role; a transient failure keeps the cached role.
+                if (res.definitive || res.role) {
+                  writeCachedRole(uid, res.role);
+                  if (res.role !== roleRef.current) setRole(res.role);
+                }
+              })
+              .catch(() => { /* keep the cached role */ });
+          } else {
+            const res = await resolveRole(
+              uid,
+              storedSession.user.user_metadata?.role
+            );
+            if (!isMounted) return;
+            setRole(res.role);
+            writeCachedRole(uid, res.role);
+          }
         } else if (currentUserIdRef.current === null) {
           // Guard: a SIGNED_IN event may have arrived while getSession was
           // pending — never wipe a session the listener already established
@@ -138,6 +198,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           setSessionValid(false);
           setRole(null);
+          clearCachedRole();
         }
       } catch (err) {
         console.error("[Auth] init error:", err);
@@ -188,12 +249,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setResolvingRole(true);
 
           try {
-            const resolvedRole = await resolveRole(roleUserId, newSession.user.user_metadata?.role);
+            const res = await resolveRole(roleUserId, newSession.user.user_metadata?.role);
             if (!isMounted) return;
 
             // Ignore stale requests (newer one started) or user switched again
             if (roleResolveSeqRef.current === requestSeq && currentUserIdRef.current === roleUserId) {
-              setRole(resolvedRole);
+              // Apply a definitive result (revoke on definitive null) or any
+              // resolved role; a transient null keeps the current/cached role.
+              if (res.definitive || res.role) {
+                setRole(res.role);
+                writeCachedRole(roleUserId, res.role);
+              }
             }
           } finally {
             // A superseded request must not clear the flag for the newer one
@@ -211,6 +277,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUserIdRef.current = null;
         roleResolveSeqRef.current += 1;
         setResolvingRole(false);
+        clearCachedRole();
       }
     });
 
@@ -231,6 +298,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       currentUserIdRef.current = null;
       roleResolveSeqRef.current += 1;
       setResolvingRole(false);
+      clearCachedRole();
     }
   };
 
