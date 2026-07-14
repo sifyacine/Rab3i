@@ -1,10 +1,9 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { 
-  ArrowRight, Edit, Trash, ExternalLink, Calendar, 
-  Briefcase, User, Info, CheckCircle2, Clock, Archive,
-  MessageSquare, FileText, Play, DollarSign
+import {
+  ArrowRight, Edit, Trash, ExternalLink, Calendar,
+  Briefcase, Eye, CheckCircle2, EyeOff, Layers, Loader2, Image as ImageIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,70 +19,57 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-export type ProjectStatus = "analysis" | "in_discussion" | "offered" | "ongoing" | "completed" | "archived";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { projectsService } from "@/services/projectsService";
 
-export const statusMap: Record<ProjectStatus, { label: string; variant: string }> = {
-  analysis: { label: "تحليل", variant: "secondary" },
-  in_discussion: { label: "قيد المناقشة", variant: "outline" },
-  offered: { label: "تم تقديم العرض", variant: "secondary" },
-  ongoing: { label: "جاري التنفيذ", variant: "default" },
-  completed: { label: "مكتمل", variant: "default" }, // Using valid badge variants
-  archived: { label: "مؤرشف", variant: "destructive" },
-};
 const ProjectDetailsAdmin = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
-  // Mock project data with milestones
-  const [project, setProject] = useState({
-    id: "1", 
-    title: "موقع شركة النبراس", 
-    category: "تطوير ويب", 
-    client: "النبراس العقارية", 
-    status: "ongoing" as ProjectStatus, 
-    description: "تطوير موقع تعريفي متكامل لشركة النبراس العقارية مع لوحة تحكم متقدمة لإدارة العقارات والمشاريع الخاصة بالشركة. المشروع تم تنفيذه باستخدام أحدث التقنيات لضمان السرعة والأمان.",
-    startDate: "2024-03-15",
-    endDate: "2024-04-20",
-    budget: "5000$",
-    link: "https://al-nebras.com",
-    features: ["نظام إدارة محتوى", "لوحة تحكم عقارية", "تصميم متجاوب", "تحسين محركات البحث"],
-    milestones: [
-      { id: "m1", title: "تحليل المتطلبات والتدشين", description: "جمع كافة المتطلبات التقنية والهوية البصرية", weight: 10, status: "completed", client_approval: "approved" },
-      { id: "m2", title: "تصميم واجهة المستخدم (UI/UX)", description: "تصميم كافة صفحات الموقع بنسخته الجوال والمكتبي", weight: 20, status: "completed", client_approval: "approved" },
-      { id: "m3", title: "تطوير الواجهة الأمامية", description: "برمجة كافة الصفحات التفاعلية", weight: 30, status: "in_progress", client_approval: "pending" },
-      { id: "m4", title: "تطوير لوحة التحكم والربط", description: "برمجة النظام الخلفي ولوحة التحكم", weight: 30, status: "pending", client_approval: "pending" },
-      { id: "m5", title: "الاختبار النهائي والتسليم", description: "التأكد من خلو الموقع من الأخطاء ورفعه", weight: 10, status: "pending", client_approval: "pending" },
-    ]
+  const { data: project, isLoading } = useQuery({
+    queryKey: ["project", id],
+    queryFn: () => projectsService.getProjectById(id!),
+    enabled: !!id,
   });
 
-  const confirmDelete = () => {
-    toast.success("تم حذف المشروع بنجاح");
-    navigate("/admin/projects");
-  };
+  const deleteMutation = useMutation({
+    mutationFn: () => projectsService.deleteProject(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("تم حذف المشروع بنجاح");
+      navigate("/admin/projects");
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحذف"),
+  });
 
-  const calculateProgress = () => {
-    return project.milestones.reduce((acc, m) => m.status === "completed" ? acc + m.weight : acc, 0);
-  };
+  if (isLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
+      </div>
+    );
+  }
 
-  const getStatusIcon = (status: ProjectStatus) => {
-    switch (status) {
-      case "analysis": return <FileText className="h-5 w-5" />;
-      case "in_discussion": return <MessageSquare className="h-5 w-5" />;
-      case "offered": return <CheckCircle2 className="h-5 w-5" />;
-      case "ongoing": return <Play className="h-5 w-5" />;
-      case "completed": return <CheckCircle2 className="h-5 w-5" />;
-      case "archived": return <Archive className="h-5 w-5" />;
-      default: return <Clock className="h-5 w-5" />;
-    }
-  };
+  if (!project) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <p className="text-muted-foreground">لم يتم العثور على المشروع</p>
+        <Button variant="outline" asChild><Link to="/admin/projects">العودة للمشاريع</Link></Button>
+      </div>
+    );
+  }
 
-  const progress = calculateProgress();
+  const categoryName = project.category?.title_ar || project.category?.name || "بدون فئة";
+  const media = project.project_media ?? [];
+  const services = project.services ?? [];
+  const createdAt = new Date(project.created_at).toLocaleDateString("ar-SA");
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       className="space-y-6 max-w-5xl mx-auto"
       dir="rtl"
     >
@@ -95,17 +81,23 @@ const ProjectDetailsAdmin = () => {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold">{project.title}</h1>
-              <Badge variant={statusMap[project.status].variant as any}>
-                {statusMap[project.status].label}
+              <Badge variant={project.is_published ? "default" : "secondary"} className="gap-1">
+                {project.is_published ? <CheckCircle2 className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                {project.is_published ? "منشور" : "مسودة"}
               </Badge>
             </div>
             <p className="text-muted-foreground flex items-center gap-2 mt-1">
               <Briefcase className="h-3.5 w-3.5" />
-              {project.category}
+              {categoryName}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {project.is_published && (
+            <Button variant="outline" asChild className="gap-2">
+              <a href={`/portfolio/${project.slug}`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /> عرض على الموقع</a>
+            </Button>
+          )}
           <Button variant="outline" asChild className="gap-2">
             <Link to={`/admin/projects/${id}/edit`}><Edit className="h-4 w-4" /> تعديل</Link>
           </Button>
@@ -115,149 +107,98 @@ const ProjectDetailsAdmin = () => {
         </div>
       </div>
 
-      {/* Dynamic Progress Bar */}
-      <Card className="border-border/40 bg-primary/5">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold">نسبة الإنجاز الإجمالية</span>
-            <span className="text-sm font-bold text-primary">{progress}%</span>
-          </div>
-          <div className="w-full bg-secondary/30 rounded-full h-3">
-            <div 
-              className="bg-primary h-3 rounded-full transition-all duration-1000 ease-out" 
-              style={{ width: `${progress}%` }} 
-            />
-          </div>
-        </CardContent>
-      </Card>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-border/40 bg-card/50">
-            <CardHeader>
-              <CardTitle className="text-xl">مراحل المشروع (Milestones)</CardTitle>
-              <CardDescription>إدارة مراحل المشروع وتتبع الإنجاز</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {project.milestones.map((m) => (
-                  <div key={m.id} className="flex items-start gap-4 p-4 rounded-xl border border-border/40 bg-background/50 hover:bg-background transition-colors">
-                    <div className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                      m.status === "completed" ? "bg-primary border-primary text-white" :
-                      m.status === "in_progress" ? "border-primary text-primary" :
-                      "border-muted-foreground/30 text-muted-foreground"
-                    }`}>
-                      {m.status === "completed" && <CheckCircle2 className="h-3 w-3" />}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-semibold">{m.title}</h4>
-                        <span className="text-xs font-bold text-muted-foreground">{m.weight}%</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">{m.description}</p>
-                      
-                      <div className="flex items-center gap-3 mt-3">
-                        <Badge variant={m.status === "completed" ? "default" : m.status === "in_progress" ? "outline" : "secondary"}>
-                          {m.status === "completed" ? "مكتمل" : m.status === "in_progress" ? "جاري العمل" : "مجدول"}
-                        </Badge>
-                        {m.client_approval === "approved" && (
-                          <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 gap-1 bg-emerald-500/5">
-                            <CheckCircle2 className="h-3 w-3" /> معتمد من العميل
-                          </Badge>
-                        )}
-                        {m.client_approval === "pending" && m.status === "completed" && (
-                          <Badge variant="outline" className="text-amber-500 border-amber-500/30 gap-1 bg-amber-500/5">
-                            <Clock className="h-3 w-3" /> بانتظار اعتماد العميل
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {project.cover_image && (
+            <Card className="border-border/40 bg-card/50 overflow-hidden">
+              <img src={project.cover_image} alt={project.title} className="w-full max-h-80 object-cover" />
+            </Card>
+          )}
 
           <Card className="border-border/40 bg-card/50">
             <CardHeader>
               <CardTitle className="text-xl">وصف المشروع</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="leading-relaxed text-muted-foreground">{project.description}</p>
-              
-              <div className="pt-4 border-t border-border/40">
-                <h4 className="font-semibold mb-3">مميزات المشروع:</h4>
-                <div className="flex flex-wrap gap-2 text-right">
-                  {project.features.map((feature, index) => (
-                    <Badge key={index} variant="secondary" className="px-3 py-1">
-                      {feature}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
+            <CardContent>
+              <p className="leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                {project.description || "لا يوجد وصف بعد."}
+              </p>
             </CardContent>
           </Card>
+
+          {media.length > 0 && (
+            <Card className="border-border/40 bg-card/50">
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center gap-2"><ImageIcon className="h-5 w-5 text-primary" /> معرض الوسائط ({media.length})</CardTitle>
+                <CardDescription>الصور والفيديوهات المرتبطة بالمشروع</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {media.map((m) => (
+                    <div key={m.id} className="aspect-video overflow-hidden rounded-lg border border-border/40 bg-secondary/20">
+                      {m.type === "video" ? (
+                        <video src={m.media_url} className="h-full w-full object-cover" controls />
+                      ) : (
+                        <img src={m.media_url} alt="" className="h-full w-full object-cover" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="space-y-6 text-right">
           <Card className="border-border/40 bg-card/50">
             <CardHeader>
-              <CardTitle className="text-lg">تفاصيل الحالة</CardTitle>
+              <CardTitle className="text-lg">معلومات المشروع</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 gap-4">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg bg-primary/10 text-primary`}>
-                    {getStatusIcon(project.status)}
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">المرحلة الحالية</p>
-                    <p className="font-bold">{statusMap[project.status].label}</p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+                  <Briefcase className="h-5 w-5" />
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
-                    <User className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">العميل</p>
-                    <p className="font-bold">{project.client}</p>
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">الفئة</p>
+                  <p className="font-bold">{categoryName}</p>
                 </div>
+              </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
-                    <DollarSign className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">الميزانية / المبلغ</p>
-                    <p className="font-bold text-emerald-500 font-sans">{project.budget}</p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <Eye className="h-5 w-5" />
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500">
-                    <Calendar className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">تاريخ البدء</p>
-                    <p className="font-bold">{project.startDate}</p>
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">عدد المشاهدات</p>
+                  <p className="font-bold font-sans">{project.views ?? 0}</p>
                 </div>
+              </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
-                    <ExternalLink className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">رابط المشروع</p>
-                    <a href={project.link} target="_blank" className="font-bold text-primary hover:underline">{project.link}</a>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">تاريخ الإنشاء</p>
+                  <p className="font-bold">{createdAt}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          {services.length > 0 && (
+            <Card className="border-border/40 bg-card/50">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2"><Layers className="h-5 w-5 text-primary" /> الخدمات المرتبطة</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-2">
+                {services.map((s) => (
+                  <Badge key={s.id} variant="secondary" className="px-3 py-1">{s.title_ar}</Badge>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
@@ -271,7 +212,7 @@ const ProjectDetailsAdmin = () => {
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:justify-start">
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               تأكيد الحذف
             </AlertDialogAction>
           </AlertDialogFooter>

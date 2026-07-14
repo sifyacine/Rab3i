@@ -1,14 +1,29 @@
+import { useEffect } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
+import type { AuthUserRole } from "@/lib/authSession";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: "admin" | "client";
+  allowedRoles?: AuthUserRole[];
 }
 
-const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, role, loading, sessionValid } = useAuth();
   const location = useLocation();
+
+  // A signed-in account with no staff role (legacy client account or auth
+  // desync) can never use the app — end its session so it doesn't linger
+  // and re-trigger role resolution on every auth event.
+  const denyAndEndSession =
+    !loading && sessionValid && !!user && !!allowedRoles?.length && role === null;
+
+  useEffect(() => {
+    if (denyAndEndSession) {
+      supabase?.auth.signOut().catch(() => {});
+    }
+  }, [denyAndEndSession]);
 
   // Show loading spinner while auth is initializing
   if (loading) {
@@ -25,19 +40,16 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   }
 
   // Handle role-based access
-  if (requiredRole) {
-    // If loading is false but role is still null, treat it as an
-    // auth desync and force a fresh login instead of hanging
-    if (role === null) {
-      console.warn("ProtectedRoute: Role is null after auth init - redirecting to login to recover");
+  if (allowedRoles && allowedRoles.length > 0) {
+    if (denyAndEndSession) {
+      console.warn("ProtectedRoute: no staff role after auth init - ending session and redirecting to login");
       return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    // Check if user has the required role
-    if (role !== requiredRole) {
-      // Redirect based on their actual role
-      const redirectPath = role === "admin" ? "/admin" : role === "client" ? "/portal" : "/";
-      return <Navigate to={redirectPath} replace />;
+    // Staff member without sufficient role (e.g. worker on a manager-only
+    // section) goes back to the dashboard home
+    if (role !== null && !allowedRoles.includes(role)) {
+      return <Navigate to="/admin" replace />;
     }
   }
 

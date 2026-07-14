@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { SmartDataTable } from "@/components/admin/SmartDataTable";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { CheckCircle, Clock, Trash, Eye, Loader2, UserPlus } from "lucide-react";
+import { CheckCircle, Clock, Trash, Eye, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestsService, GuestRequest, RequestStatus } from "@/services/requestsService";
 import { useAuth } from "@/contexts/AuthContext";
+import { isStaffRole } from "@/lib/authSession";
 
 const statusConfig: Record<RequestStatus, { label: string; className: string }> = {
   new:       { label: "جديد", className: "bg-blue-500/15 text-blue-600 border-blue-500/30" },
@@ -38,7 +39,7 @@ const Requests = () => {
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ["admin-requests"],
     queryFn: () => requestsService.getRequests(),
-    enabled: role === "admin"
+    enabled: isStaffRole(role)
   });
 
   const deleteMutation = useMutation({
@@ -162,15 +163,6 @@ const Requests = () => {
             }}>
               <Clock className="h-4 w-4" /> إغلاق الطلب
             </DropdownMenuItem>
-
-            {!item.user_id && (
-              <DropdownMenuItem className="gap-2 cursor-pointer text-blue-600 focus:text-blue-600" onClick={(e) => {
-                e.stopPropagation();
-                toast.info(`سيُربط تلقائياً عند تسجيل ${item.guest_email} كحساب`);
-              }}>
-                <UserPlus className="h-4 w-4" /> إرسال دعوة إنشاء حساب
-              </DropdownMenuItem>
-            )}
 
             <DropdownMenuItem
               className="gap-2 cursor-pointer text-destructive focus:text-destructive"

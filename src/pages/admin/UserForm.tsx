@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { 
-  Check, User, Mail, Shield, Save, 
-  ArrowRight, Key, AlertCircle
+import {
+  User, Mail, Shield, Save,
+  Key, AlertCircle, Loader2, Phone, Briefcase
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,36 +16,116 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { usersService } from "@/services/usersService";
+import { getSignupErrorMessage } from "@/lib/authErrors";
+import { normalizeStaffRole, type AuthUserRole } from "@/lib/authSession";
+import { useAuth } from "@/contexts/AuthContext";
 
 const UserFormAdmin = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
   const isEditing = !!id;
-  
-  const [formData, setFormData] = useState<any>({
-    username: "",
-    email: "",
-    role: "editor",
-    password: ""
+  const isSelf = isEditing && id === currentUser?.id;
+
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<AuthUserRole>("worker");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+
+  const { data: existingUser, isLoading: loadingUser } = useQuery({
+    queryKey: ["user", id],
+    queryFn: () => usersService.getUserById(id!),
+    enabled: isEditing,
   });
 
   useEffect(() => {
-    if (isEditing) {
-      // Mock data
-      setFormData({
-        id: "1", 
-        username: "admin_yassine", 
-        email: "yassine@example.com", 
-        role: "admin",
-        password: "********"
-      });
+    if (existingUser) {
+      setFullName(existingUser.full_name ?? "");
+      setEmail(existingUser.email ?? "");
+      setRole(normalizeStaffRole(existingUser.role) ?? "worker");
+      setPhone(existingUser.phone ?? "");
+      setJobTitle(existingUser.job_title ?? "");
     }
-  }, [id, isEditing]);
+  }, [existingUser]);
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      usersService.createUser({
+        email: email.trim(),
+        password,
+        full_name: fullName.trim(),
+        role,
+        phone: phone.trim() || undefined,
+        job_title: jobTitle.trim() || undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success("تم إنشاء الحساب بنجاح ويمكن للمستخدم تسجيل الدخول مباشرة.");
+      navigate("/admin/users");
+    },
+    onError: (error: Error) => {
+      toast.error(getSignupErrorMessage(error.message));
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      // Profile fields go through a normal update; a role change is a
+      // privileged action routed to the edge function.
+      await usersService.updateUser(id!, {
+        full_name: fullName.trim(),
+        phone: phone.trim() || null,
+        job_title: jobTitle.trim() || null,
+      });
+      // A manager can't change their own role (the server refuses self-demote);
+      // the Select is disabled for self, so this only runs for other users.
+      if (!isSelf && normalizeStaffRole(existingUser?.role) !== role) {
+        await usersService.setUserRole(id!, role);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["user", id] });
+      toast.success("تم تحديث بيانات المستخدم");
+      navigate("/admin/users");
+    },
+    onError: (error: Error) => toast.error(error.message || "حدث خطأ أثناء حفظ التعديلات"),
+  });
+
+  const saving = createMutation.isPending || updateMutation.isPending;
 
   const handleSave = () => {
-    toast.success(isEditing ? "تم تحديث بيانات المستخدم" : "تم إضافة المستخدم بنجاح");
-    navigate("/admin/users");
+    if (!fullName.trim()) {
+      toast.error("يرجى إدخال اسم المستخدم");
+      return;
+    }
+    if (!isEditing) {
+      if (!email.trim()) {
+        toast.error("يرجى إدخال البريد الإلكتروني");
+        return;
+      }
+      if (password.length < 6) {
+        toast.error("كلمة المرور يجب أن تكون 6 أحرف على الأقل");
+        return;
+      }
+      createMutation.mutate();
+    } else {
+      updateMutation.mutate();
+    }
   };
+
+  if (isEditing && loadingUser) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-8" dir="rtl">
@@ -63,47 +142,70 @@ const UserFormAdmin = () => {
         <CardContent className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">اسم المستخدم</Label>
+              <Label htmlFor="full-name">الاسم الكامل</Label>
               <div className="relative">
                 <User className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input id="username" className="pr-10" value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} placeholder="admin_name" />
+                <Input id="full-name" className="pr-10" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="الاسم الثلاثي" />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">البريد الإلكتروني</Label>
               <div className="relative">
                 <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input id="email" className="pr-10" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="admin@example.com" />
+                <Input id="email" type="email" className="pr-10" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" disabled={isEditing} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="user-phone">رقم الهاتف</Label>
+                <div className="relative">
+                  <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input id="user-phone" dir="ltr" className="pr-10" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+966 5XXXXXXXX" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="user-job-title">المسمى الوظيفي</Label>
+                <div className="relative">
+                  <Briefcase className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input id="user-job-title" className="pr-10" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="مصمم، مطوّر، مسوّق..." />
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="role">الدور (الرتبة)</Label>
-                <Select value={formData.role} onValueChange={(v) => setFormData({...formData, role: v})}>
+                <Select value={role} onValueChange={(v) => setRole(v as AuthUserRole)} disabled={isSelf}>
                   <SelectTrigger id="role" className="relative pr-10">
                     <Shield className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <SelectValue placeholder="اختر الرتبة" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">مدير نظام (Full Access)</SelectItem>
-                    <SelectItem value="editor">محرر (Content Editor)</SelectItem>
-                    <SelectItem value="viewer">مشاهد (View Only)</SelectItem>
+                    <SelectItem value="manager">مدير (كامل الصلاحيات)</SelectItem>
+                    <SelectItem value="worker">موظف (بدون الأقسام الإدارية)</SelectItem>
                   </SelectContent>
                 </Select>
+                {isSelf && <p className="text-xs text-muted-foreground">لا يمكنك تغيير رتبتك بنفسك.</p>}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">{isEditing ? "كلمة المرور الجديدة" : "كلمة المرور"}</Label>
-                <div className="relative">
-                  <Key className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="password" type="password" className="pr-10" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} placeholder="••••••••" />
+              {!isEditing && (
+                <div className="space-y-2">
+                  <Label htmlFor="password">كلمة المرور</Label>
+                  <div className="relative">
+                    <Key className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input id="password" type="password" className="pr-10" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
-          {isEditing && (
+          {isEditing ? (
             <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex gap-3 text-xs text-amber-500">
               <AlertCircle className="h-4 w-4 shrink-0" />
-              <p>اترك حقل كلمة المرور فارغاً إذا كنت لا ترغب في تغييرها.</p>
+              <p>لتغيير كلمة المرور، يستخدم المستخدم خيار «نسيت كلمة المرور» في صفحة تسجيل الدخول.</p>
+            </div>
+          ) : (
+            <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 flex gap-3 text-xs text-blue-400">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <p>يُفعَّل الحساب فوراً — سلّم المستخدم بريده وكلمة المرور ليسجّل الدخول.</p>
             </div>
           )}
         </CardContent>
@@ -111,8 +213,8 @@ const UserFormAdmin = () => {
 
       <div className="flex justify-end gap-3 pb-10">
         <Button variant="outline" asChild><Link to="/admin/users">إلغاء الأمر</Link></Button>
-        <Button onClick={handleSave} className="bg-gradient-brand gap-2 px-8 shadow-lg shadow-primary/20">
-          <Save size={18} /> حفظ المستخدم
+        <Button onClick={handleSave} disabled={saving} className="bg-gradient-brand gap-2 px-8 shadow-lg shadow-primary/20">
+          {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} حفظ المستخدم
         </Button>
       </div>
     </div>

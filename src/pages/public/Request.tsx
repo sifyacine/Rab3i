@@ -230,18 +230,12 @@ const Request = () => {
               <span className="font-semibold text-primary dir-ltr">{form.guest_email}</span>
             </p>
             <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
-              أنشئ حساباً بنفس البريد لمتابعة تقدم مشروعك مباشرة من لوحتك الشخصية.
+              سيراجع فريقنا طلبك ويتواصل معك عبر البريد الإلكتروني في أقرب وقت.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
-                to="/signup"
-                className="rounded-xl bg-gradient-brand px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
-              >
-                إنشاء حساب الآن
-              </Link>
-              <Link
                 to="/"
-                className="rounded-xl border border-border/60 px-8 py-3 text-sm font-medium hover:bg-secondary/50 transition-all"
+                className="rounded-xl bg-gradient-brand px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
               >
                 العودة للرئيسية
               </Link>
@@ -351,7 +345,7 @@ const Request = () => {
                     </div>
 
                     <div className="rounded-xl bg-primary/5 border border-primary/15 p-3 text-xs text-muted-foreground">
-                      💡 أنشئ حساباً لاحقاً بنفس البريد لمتابعة مشروعك مباشرة
+                      💡 سيتواصل معك فريقنا عبر هذا البريد لمتابعة تفاصيل مشروعك
                     </div>
                   </div>
                 )}

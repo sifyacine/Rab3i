@@ -1,47 +1,34 @@
 import { motion } from "framer-motion";
-import { Zap, ArrowLeft, Loader2, Palette, Megaphone, PenTool, Globe, Building, Rocket, RefreshCw } from "lucide-react";
+import { ArrowLeft, Palette, Megaphone, PenTool, Globe, Building, Rocket, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import ScrollReveal from "../ScrollReveal";
+import { servicesService } from "@/services/servicesService";
+import type { Service } from "@/types/portfolio";
 
-const services = [
-  {
-    icon: Palette,
-    title: "بناء وتطوير الهوية التجارية",
-    title_en: "Brand Identity Development"
-  },
-  {
-    icon: Rocket,
-    title: "استراتيجيات التسويق والنمو",
-    title_en: "Marketing & Growth Strategies"
-  },
-  {
-    icon: Megaphone,
-    title: "إدارة وتنفيذ الحملات الإعلانية",
-    title_en: "Ad Campaign Management"
-  },
-  {
-    icon: PenTool,
-    title: "صناعة المحتوى الاحترافي والمستدام",
-    title_en: "Professional Content Creation"
-  },
-  {
-    icon: Building,
-    title: "تطوير الأنظمة التسويقية الداخلية",
-    title_en: "Internal Marketing Systems"
-  },
-  {
-    icon: RefreshCw,
-    title: "إعادة تموضع العلامات (Rebranding)",
-    title_en: "Brand Repositioning"
-  },
-  {
-    icon: Globe,
-    title: "تصميم وتطوير مواقع الويب والتطبيقات ووصفحات الهبوط",
-    title_en: "Web & App Development"
-  }
+// Icon set cycled by index (DB services store an optional icon string we don't
+// map to components yet). Also used for the curated fallback below.
+const ICONS = [Palette, Rocket, Megaphone, PenTool, Building, RefreshCw, Globe];
+
+// Curated fallback shown only when the DB has no active services yet, so the
+// public homepage never renders an empty section.
+const FALLBACK = [
+  { title_ar: "بناء وتطوير الهوية التجارية", title_en: "Brand Identity Development" },
+  { title_ar: "استراتيجيات التسويق والنمو", title_en: "Marketing & Growth Strategies" },
+  { title_ar: "إدارة وتنفيذ الحملات الإعلانية", title_en: "Ad Campaign Management" },
+  { title_ar: "صناعة المحتوى الاحترافي والمستدام", title_en: "Professional Content Creation" },
+  { title_ar: "تطوير الأنظمة التسويقية الداخلية", title_en: "Internal Marketing Systems" },
+  { title_ar: "إعادة تموضع العلامات (Rebranding)", title_en: "Brand Repositioning" },
+  { title_ar: "تصميم وتطوير مواقع الويب والتطبيقات", title_en: "Web & App Development" },
 ];
 
-function ServiceCard({ service, index }: { service: typeof services[0]; index: number }) {
+interface ServiceCardData {
+  title_ar: string;
+  title_en: string | null;
+}
+
+function ServiceCard({ service, index }: { service: ServiceCardData; index: number }) {
+  const Icon = ICONS[index % ICONS.length];
   return (
     <ScrollReveal delay={index * 0.1}>
       <motion.div
@@ -53,12 +40,12 @@ function ServiceCard({ service, index }: { service: typeof services[0]; index: n
 
         <div className="relative z-10 p-6">
           <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary transition-all duration-500 group-hover:bg-gradient-brand group-hover:text-white group-hover:shadow-lg group-hover:shadow-primary/25">
-            <service.icon size={22} />
+            <Icon size={22} />
           </div>
           <h3 className="mb-1 text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-            {service.title}
+            {service.title_ar}
           </h3>
-          <p className="text-xs text-muted-foreground">{service.title_en}</p>
+          {service.title_en && <p className="text-xs text-muted-foreground">{service.title_en}</p>}
         </div>
       </motion.div>
     </ScrollReveal>
@@ -66,6 +53,17 @@ function ServiceCard({ service, index }: { service: typeof services[0]; index: n
 }
 
 const ServicesSection = () => {
+  const { data } = useQuery({
+    queryKey: ["home-services"],
+    queryFn: () => servicesService.getServices(true),
+  });
+
+  const dbServices = (data ?? []) as Service[];
+  const cards: ServiceCardData[] =
+    dbServices.length > 0
+      ? dbServices.map((s) => ({ title_ar: s.title_ar, title_en: s.title_en }))
+      : FALLBACK;
+
   return (
     <section className="relative py-32" dir="rtl">
       <div className="container mx-auto px-6">
@@ -80,7 +78,7 @@ const ServicesSection = () => {
         </ScrollReveal>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {services.map((service, i) => (
+          {cards.map((service, i) => (
             <ServiceCard key={i} service={service} index={i} />
           ))}
         </div>

@@ -263,7 +263,7 @@ const RequestDetailsAdmin = () => {
                       <CheckCircle2 className="h-3 w-3" /> مستخدم مسجّل
                     </span>
                   ) : (
-                    <span className="text-xs text-muted-foreground">ضيف (لا حساب بعد)</span>
+                    <span className="text-xs text-muted-foreground">ضيف</span>
                   )}
                 </div>
               </div>

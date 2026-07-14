@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { needsRoleRefresh } from "@/lib/authSession";
+import { needsRoleRefresh, normalizeStaffRole, type AuthUserRole } from "@/lib/authSession";
 
-type UserRole = "admin" | "client";
+type UserRole = AuthUserRole;
 
 const AUTH_ASYNC_TIMEOUT_MS = 8000;
 
@@ -25,10 +25,7 @@ const withTimeout = <T,>(promise: PromiseLike<T>, timeoutMs: number, label: stri
   });
 };
 
-const normalizeRole = (value: unknown): UserRole | null => {
-  if (value === "admin" || value === "client") return value;
-  return null;
-};
+const normalizeRole = normalizeStaffRole;
 
 interface AuthContextType {
   user: User | null;
@@ -60,8 +57,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [role]);
 
   // ── Role resolver ──────────────────────────────────────────────────────────
-  const resolveRole = useCallback(async (userId: string, metadataRole?: unknown): Promise<UserRole> => {
-    if (!supabase) return "client";
+  // Resolves to null when the account has no staff role (e.g. legacy client
+  // accounts or lookup failures) — the app fails closed and denies access.
+  const resolveRole = useCallback(async (userId: string, metadataRole?: unknown): Promise<UserRole | null> => {
+    if (!supabase) return null;
     try {
       const { data, error } = await withTimeout(
         supabase
@@ -73,8 +72,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         "profiles role lookup"
       );
 
+      // The profile row is authoritative: a non-staff role there means no access
       if (!error && data?.role) {
-        return normalizeRole(data.role) ?? "client";
+        return normalizeRole(data.role);
       }
 
       // Fallback to user metadata from current event/session
@@ -91,12 +91,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
 
       if (authUser?.id === userId) {
-        return normalizeRole(authUser.user_metadata?.role) ?? "client";
+        return normalizeRole(authUser.user_metadata?.role);
       }
 
-      return "client";
+      return null;
     } catch {
-      return normalizeRole(metadataRole) ?? "client";
+      return normalizeRole(metadataRole);
     }
   }, []);
 
@@ -113,7 +113,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const {
           data: { session: storedSession },
-        } = await supabase.auth.getSession();
+        } = await withTimeout(
+          supabase.auth.getSession(),
+          AUTH_ASYNC_TIMEOUT_MS,
+          "session lookup"
+        );
         if (!isMounted) return;
 
         if (storedSession?.user) {
@@ -127,21 +131,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!isMounted) return;
           setRole(resolvedRole);
           currentUserIdRef.current = storedSession.user.id;
-        } else {
+        } else if (currentUserIdRef.current === null) {
+          // Guard: a SIGNED_IN event may have arrived while getSession was
+          // pending — never wipe a session the listener already established
           setSession(null);
           setUser(null);
           setSessionValid(false);
           setRole(null);
-          currentUserIdRef.current = null;
         }
       } catch (err) {
         console.error("[Auth] init error:", err);
-        if (isMounted) {
+        if (isMounted && currentUserIdRef.current === null) {
           setSession(null);
           setUser(null);
           setSessionValid(false);
           setRole(null);
-          currentUserIdRef.current = null;
         }
       } finally {
         setBootstrapping(false);
@@ -177,6 +181,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (shouldRefreshRole) {
           const requestSeq = ++roleResolveSeqRef.current;
           const roleUserId = nextUserId;
+          // Never show the previous user's role while the new one resolves
+          if (previousUserId !== roleUserId) {
+            setRole(null);
+          }
           setResolvingRole(true);
 
           try {
@@ -188,7 +196,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setRole(resolvedRole);
             }
           } finally {
-            setResolvingRole(false);
+            // A superseded request must not clear the flag for the newer one
+            if (roleResolveSeqRef.current === requestSeq) {
+              setResolvingRole(false);
+            }
           }
         }
       } else {

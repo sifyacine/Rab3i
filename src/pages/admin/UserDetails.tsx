@@ -1,14 +1,16 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { 
-  ArrowRight, Edit, Trash, User, Shield, 
-  Mail, Calendar, Key, AlertCircle, Clock
+import {
+  ArrowRight, Edit, Trash, User, Shield,
+  Mail, Calendar, AlertCircle, Loader2,
+  Phone, Briefcase, ClipboardList, Ban, ShieldCheck, ArrowLeftRight
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,27 +22,89 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { usersService } from "@/services/usersService";
+import { tasksService, taskStatusConfig } from "@/services/tasksService";
+import { normalizeStaffRole } from "@/lib/authSession";
+import { useAuth } from "@/contexts/AuthContext";
 
 const UserDetailsAdmin = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
-  // Mock user data
-  const user = {
-    id: "1", 
-    username: "admin_yassine", 
-    email: "yassine@example.com", 
-    role: "admin",
-    lastLogin: "2024-03-21 15:30",
-    joinDate: "2023-12-01",
-    status: "active"
+  const { data: user, isLoading } = useQuery({
+    queryKey: ["user", id],
+    queryFn: () => usersService.getUserById(id!),
+    enabled: !!id,
+  });
+
+  const { data: userTasks = [] } = useQuery({
+    queryKey: ["user-tasks", id],
+    queryFn: () => tasksService.getTasksByAssignee(id!),
+    // Only workers have an assigned-tasks card — don't query for managers
+    enabled: !!id && normalizeStaffRole(user?.role) === "worker",
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => usersService.deleteUser(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success("تم حذف المستخدم بنجاح");
+      navigate("/admin/users");
+    },
+    onError: (e: Error) => toast.error(e.message || "حدث خطأ أثناء الحذف"),
+  });
+
+  const invalidateUser = () => {
+    queryClient.invalidateQueries({ queryKey: ["users"] });
+    queryClient.invalidateQueries({ queryKey: ["user", id] });
   };
 
-  const confirmDelete = () => {
-    toast.success("تم حذف المستخدم بنجاح");
-    navigate("/admin/users");
-  };
+  const roleMutation = useMutation({
+    mutationFn: (role: "manager" | "worker") => usersService.setUserRole(id!, role),
+    onSuccess: () => { invalidateUser(); toast.success("تم تحديث رتبة المستخدم"); },
+    onError: (e: Error) => toast.error(e.message || "تعذّر تغيير الرتبة"),
+  });
+
+  const banMutation = useMutation({
+    mutationFn: (ban: boolean) => (ban ? usersService.banUser(id!) : usersService.unbanUser(id!)),
+    onSuccess: (_d, ban) => { invalidateUser(); toast.success(ban ? "تم حظر المستخدم" : "تم رفع الحظر"); },
+    onError: (e: Error) => toast.error(e.message || "تعذّر تنفيذ الإجراء"),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <p className="text-muted-foreground">لم يتم العثور على المستخدم</p>
+        <Button variant="outline" asChild><Link to="/admin/users">العودة للمستخدمين</Link></Button>
+      </div>
+    );
+  }
+
+  const staffRole = normalizeStaffRole(user.role);
+  const roleLabel = staffRole === "manager" ? "مدير" : staffRole === "worker" ? "موظف" : "بدون صلاحية";
+  const roleDescription =
+    staffRole === "manager"
+      ? "مدير كامل الصلاحيات"
+      : staffRole === "worker"
+        ? "موظف — بدون الأقسام الإدارية"
+        : "لا يملك صلاحية الوصول إلى لوحة التحكم";
+  const displayName = user.full_name || user.email;
+  const joinDate = new Date(user.created_at).toLocaleDateString("ar-SA");
+  const isSelf = user.id === currentUser?.id;
+  const nextRole: "manager" | "worker" = staffRole === "manager" ? "worker" : "manager";
+  const busy = roleMutation.isPending || banMutation.isPending || deleteMutation.isPending;
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl mx-auto" dir="rtl">
@@ -51,10 +115,13 @@ const UserDetailsAdmin = () => {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold">{user.username}</h1>
-              <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                {user.role === "admin" ? "مدير نظام" : "محرر"}
+              <h1 className="text-3xl font-bold">{displayName}</h1>
+              <Badge variant={staffRole === "manager" ? "default" : "secondary"}>
+                {roleLabel}
               </Badge>
+              {user.is_banned && (
+                <Badge variant="outline" className="bg-red-500/15 text-red-600 border-red-500/30">محظور</Badge>
+              )}
             </div>
             <p className="text-muted-foreground flex items-center gap-2 mt-1">
               <Mail className="h-3.5 w-3.5" />
@@ -62,13 +129,25 @@ const UserDetailsAdmin = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button variant="outline" asChild className="gap-2">
             <Link to={`/admin/users/${id}/edit`}><Edit className="h-4 w-4" /> تعديل</Link>
           </Button>
-          <Button variant="destructive" onClick={() => setIsAlertOpen(true)} className="gap-2 border-none">
-            <Trash className="h-4 w-4" /> حذف
-          </Button>
+          {!isSelf && (
+            <>
+              <Button variant="outline" disabled={busy} onClick={() => roleMutation.mutate(nextRole)} className="gap-2">
+                <ArrowLeftRight className="h-4 w-4" />
+                {nextRole === "manager" ? "ترقية إلى مدير" : "تحويل إلى موظف"}
+              </Button>
+              <Button variant="outline" disabled={busy} onClick={() => banMutation.mutate(!user.is_banned)} className="gap-2">
+                {user.is_banned ? <ShieldCheck className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                {user.is_banned ? "رفع الحظر" : "حظر"}
+              </Button>
+              <Button variant="destructive" disabled={busy} onClick={() => setIsAlertOpen(true)} className="gap-2 border-none">
+                <Trash className="h-4 w-4" /> حذف
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -80,36 +159,76 @@ const UserDetailsAdmin = () => {
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-1">
-                <Label className="text-muted-foreground">اسم المستخدم</Label>
-                <p className="font-bold flex items-center gap-2 font-sans"><User className="h-4 w-4 text-primary" /> {user.username}</p>
+                <Label className="text-muted-foreground">الاسم الكامل</Label>
+                <p className="font-bold flex items-center gap-2 font-sans"><User className="h-4 w-4 text-primary" /> {displayName}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-muted-foreground">الرتبة</Label>
-                <p className="font-bold flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /> {user.role === "admin" ? "مدير كامل الصلاحيات" : "محرر محتوى"}</p>
+                <p className="font-bold flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /> {roleDescription}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground">المسمى الوظيفي</Label>
+                <p className="font-medium flex items-center gap-2"><Briefcase className="h-4 w-4 text-primary" /> {user.job_title || "—"}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground">رقم الهاتف</Label>
+                <p className="font-medium flex items-center gap-2" dir="ltr"><Phone className="h-4 w-4 text-primary" /> {user.phone || "—"}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-muted-foreground">تاريخ الانضمام</Label>
-                <p className="font-medium flex items-center gap-2"><Calendar className="h-4 w-4 text-primary" /> {user.joinDate}</p>
+                <p className="font-medium flex items-center gap-2"><Calendar className="h-4 w-4 text-primary" /> {joinDate}</p>
               </div>
-              <div className="space-y-1">
-                <Label className="text-muted-foreground">آخر ظهور</Label>
-                <p className="font-medium flex items-center gap-2 font-sans"><Clock className="h-4 w-4 text-primary" /> {user.lastLogin}</p>
-              </div>
-            </div>
-            <div className="pt-4 border-t border-border/20">
-              <Button variant="outline" className="gap-2"><Key className="h-4 w-4" /> إعادة تعيين كلمة المرور</Button>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-border/40 bg-pink-500/5 h-fit">
-          <CardHeader>
-            <CardTitle className="text-lg text-pink-500 flex items-center gap-2"><AlertCircle className="h-4 w-4" /> تنبيه أمني</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-pink-500/80 leading-relaxed">
-            هذا الحساب يمتلك صلاحيات إدارية كاملة. يرجى الحذر عند تعديل بياناته أو صلاحياته لتجنب فقدان الوصول إلى لوحة التحكم.
-          </CardContent>
-        </Card>
+        {staffRole === "manager" && (
+          <Card className="border-border/40 bg-pink-500/5 h-fit">
+            <CardHeader>
+              <CardTitle className="text-lg text-pink-500 flex items-center gap-2"><AlertCircle className="h-4 w-4" /> تنبيه أمني</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-pink-500/80 leading-relaxed">
+              هذا الحساب يمتلك صلاحيات إدارية كاملة. يرجى الحذر عند تعديل بياناته أو صلاحياته لتجنب فقدان الوصول إلى لوحة التحكم.
+            </CardContent>
+          </Card>
+        )}
+
+        {staffRole === "worker" && (
+          <Card className="md:col-span-3 border-border/40 bg-card/30">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-primary" /> المهام المسندة ({userTasks.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {userTasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">لا توجد مهام مسندة لهذا الموظف</p>
+              ) : (
+                <div className="space-y-3">
+                  {userTasks.map((t) => (
+                    <Link
+                      key={t.id}
+                      to={`/admin/tasks/${t.id}/edit`}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-secondary/20 px-4 py-3 hover:bg-secondary/40 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{t.title}</p>
+                        {t.due_date && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            الاستحقاق: {new Date(t.due_date).toLocaleDateString("ar-SA")}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant="outline" className={cn("shrink-0 font-medium", taskStatusConfig[t.status]?.className)}>
+                        {taskStatusConfig[t.status]?.label ?? t.status}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
@@ -120,7 +239,7 @@ const UserDetailsAdmin = () => {
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:justify-start">
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">تأكيد الحذف</AlertDialogAction>
+            <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">تأكيد الحذف</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

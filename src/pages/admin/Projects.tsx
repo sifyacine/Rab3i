@@ -22,6 +22,7 @@ import { projectsService } from "@/services/projectsService";
 import { Project } from "@/types/portfolio";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { isStaffRole } from "@/lib/authSession";
 
 const Projects = () => {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ const Projects = () => {
   const { data: projectsData, isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: () => projectsService.getProjects(),
-    enabled: role === "admin"
+    enabled: isStaffRole(role)
   });
 
   const deleteMutation = useMutation({
