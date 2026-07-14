@@ -24,6 +24,7 @@ import { projectsService } from "@/services/projectsService";
 import { categoryService } from "@/services/categoryService";
 import { mediaService } from "@/services/mediaService";
 import { servicesService } from "@/services/servicesService";
+import { clientsService } from "@/services/clientsService";
 import { GuestRequest } from "@/services/requestsService";
 import { requestsService } from "@/services/requestsService";
 
@@ -52,6 +53,7 @@ const ProjectFormAdmin = () => {
     title: sourceRequest ? `${sourceRequest.project_type} – ${sourceRequest.guest_name}` : "",
     slug: "",
     category_id: "",
+    client_id: "",
     description: sourceRequest?.details ?? "",
     is_published: false,
     cover_image: "",
@@ -60,6 +62,11 @@ const ProjectFormAdmin = () => {
   const { data: categoriesData } = useQuery({
     queryKey: ["categories"],
     queryFn: () => categoryService.getCategories()
+  });
+
+  const { data: clients = [] } = useQuery({
+    queryKey: ["clients"],
+    queryFn: () => clientsService.getClients()
   });
 
   const { data: allServices = [] } = useQuery({
@@ -79,6 +86,7 @@ const ProjectFormAdmin = () => {
         title: projectToEdit.title,
         slug: projectToEdit.slug,
         category_id: projectToEdit.category_id || "",
+        client_id: projectToEdit.client_id || "",
         description: projectToEdit.description || "",
         is_published: projectToEdit.is_published,
         cover_image: projectToEdit.cover_image || "",
@@ -102,6 +110,7 @@ const ProjectFormAdmin = () => {
         title: formData.title,
         slug: formData.slug || formData.title.toLowerCase().replace(/\s+/g, '-'),
         category_id: formData.category_id || undefined,
+        client_id: formData.client_id || null,
         description: formData.description,
         is_published: formData.is_published,
         cover_image
@@ -223,7 +232,7 @@ const ProjectFormAdmin = () => {
                   {categoriesData?.map(cat => (
                     <SelectItem key={cat.id} value={cat.id}>
                       <span className="flex items-center gap-2">
-                        <span>{cat.title_ar || cat.name}</span>
+                        <span>{cat.title_ar || cat.slug}</span>
                         <span className="text-xs text-muted-foreground">/ {cat.title_en || cat.slug}</span>
                       </span>
                     </SelectItem>
@@ -293,6 +302,24 @@ const ProjectFormAdmin = () => {
                 checked={formData.is_published}
                 onCheckedChange={c => setFormData({ ...formData, is_published: c })}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="client">العميل (اختياري)</Label>
+              <Select
+                value={formData.client_id || "none"}
+                onValueChange={v => setFormData({ ...formData, client_id: v === "none" ? "" : v })}
+              >
+                <SelectTrigger id="client">
+                  <SelectValue placeholder="اربط المشروع بعميل" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">بدون عميل</SelectItem>
+                  {clients.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}{c.company ? ` — ${c.company}` : ""}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">ربط المشروع بعميل يُحدّث عدد مشاريعه في قسم العملاء.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">وصف المشروع</Label>

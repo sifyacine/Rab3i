@@ -95,6 +95,7 @@ export const projectsService = {
       description_en: project.description,
       cover_image: project.cover_image,
       category_id: project.category_id,
+      client_id: project.client_id ?? null,
       is_published: project.is_published,
     };
     const { data, error } = await supabase
@@ -124,8 +125,19 @@ export const projectsService = {
       .from('projects')
       .delete()
       .eq('id', id);
-      
+
     if (error) throw error;
+  },
+
+  // Projects belonging to one client (client details page)
+  async getProjectsByClient(clientId: string) {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*, category:categories(*)')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data as Project[];
   },
 
   async incrementViews(id: string, ipAddress?: string) {

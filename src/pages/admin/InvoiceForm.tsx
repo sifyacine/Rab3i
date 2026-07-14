@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { invoicesService, computeInvoiceTotals, VAT_RATE, InvoiceItem } from "@/services/invoicesService";
+import { clientsService } from "@/services/clientsService";
 
 interface ItemRow {
   description: string;
@@ -37,7 +38,13 @@ const InvoiceFormAdmin = () => {
   const [customerPhone, setCustomerPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [status, setStatus] = useState<"paid" | "unpaid" | "overdue" | "canceled">("unpaid");
+  const [clientId, setClientId] = useState("");
   const [items, setItems] = useState<ItemRow[]>([{ ...EMPTY_ROW }]);
+
+  const { data: clients = [] } = useQuery({
+    queryKey: ["clients"],
+    queryFn: () => clientsService.getClients(),
+  });
 
   const { data: existingInvoice } = useQuery({
     queryKey: ["invoice", id],
@@ -52,6 +59,7 @@ const InvoiceFormAdmin = () => {
       setCustomerPhone(existingInvoice.customer_phone ?? "");
       setPaymentMethod(existingInvoice.payment_method ?? "");
       setStatus(existingInvoice.status);
+      setClientId(existingInvoice.client_id ?? "");
       const rows: ItemRow[] = existingInvoice.items && existingInvoice.items.length
         ? existingInvoice.items.map((it) => ({
             description: it.description ?? "",
@@ -121,6 +129,7 @@ const InvoiceFormAdmin = () => {
       status,
       customer_phone: customerPhone.trim() || null,
       payment_method: paymentMethod || null,
+      client_id: clientId || null,
       items: cleanItems,
     };
 
@@ -221,7 +230,30 @@ const InvoiceFormAdmin = () => {
                 )}
               </div>
               <div className="space-y-2">
-                <Label>العميل</Label>
+                <Label>ربط بعميل (اختياري)</Label>
+                <Select
+                  value={clientId || "none"}
+                  onValueChange={(v) => {
+                    if (v === "none") { setClientId(""); return; }
+                    setClientId(v);
+                    const c = clients.find((x) => x.id === v);
+                    if (c) { setCustomerName(c.name); setCustomerPhone(c.phone ?? ""); }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="بدون عميل" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">بدون عميل</SelectItem>
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">الربط بعميل يُحسب ضمن «إجمالي إنفاقه» عند الدفع.</p>
+              </div>
+              <div className="space-y-2">
+                <Label>اسم العميل</Label>
                 <Input placeholder="اسم العميل" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
               </div>
               <div className="space-y-2">

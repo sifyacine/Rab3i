@@ -22,6 +22,8 @@ import {
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { clientsService } from "@/services/clientsService";
+import { projectsService } from "@/services/projectsService";
+import { invoicesService } from "@/services/invoicesService";
 
 const ClientDetailsAdmin = () => {
   const { id } = useParams();
@@ -34,6 +36,22 @@ const ClientDetailsAdmin = () => {
     queryFn: () => clientsService.getClientById(id!),
     enabled: !!id,
   });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["client-projects", id],
+    queryFn: () => projectsService.getProjectsByClient(id!),
+    enabled: !!id,
+  });
+
+  const { data: clientInvoices = [] } = useQuery({
+    queryKey: ["client-invoices", id],
+    queryFn: () => invoicesService.getInvoicesByClient(id!),
+    enabled: !!id,
+  });
+
+  const totalSpent = clientInvoices
+    .filter((inv) => inv.status === "paid")
+    .reduce((sum, inv) => sum + Number(inv.total ?? 0), 0);
 
   const deleteMutation = useMutation({
     mutationFn: () => clientsService.deleteClient(id!),
@@ -138,11 +156,11 @@ const ClientDetailsAdmin = () => {
           <CardContent className="space-y-6">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-2 text-muted-foreground"><Folder className="h-4 w-4" /> المشاريع</span>
-              <span className="font-bold">{client.projects_count ?? 0}</span>
+              <span className="font-bold font-sans">{projects.length}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-muted-foreground"><Wallet className="h-4 w-4" /> إجمالي الإنفاق</span>
-              <span className="font-bold font-sans">{client.total_spent ?? 0}</span>
+              <span className="flex items-center gap-2 text-muted-foreground"><Wallet className="h-4 w-4" /> إجمالي الإنفاق (المدفوع)</span>
+              <span className="font-bold font-sans">{totalSpent.toLocaleString()} ر.س</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-2 text-muted-foreground"><Calendar className="h-4 w-4" /> تاريخ الانضمام</span>
@@ -151,6 +169,41 @@ const ClientDetailsAdmin = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="border-border/40 bg-card/30">
+        <CardHeader>
+          <CardTitle className="text-xl flex items-center gap-2">
+            <Folder className="h-5 w-5 text-primary" /> مشاريع العميل ({projects.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {projects.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              لا توجد مشاريع مرتبطة بهذا العميل — اربط مشروعاً بالعميل من صفحة تعديل المشروع.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {projects.map((p) => (
+                <Link
+                  key={p.id}
+                  to={`/admin/projects/${p.id}`}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-secondary/20 px-4 py-3 hover:bg-secondary/40 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{p.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {p.category?.title_ar || p.category?.name || "بدون فئة"}
+                    </p>
+                  </div>
+                  <Badge variant={p.is_published ? "default" : "secondary"} className="shrink-0">
+                    {p.is_published ? "منشور" : "مسودة"}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <AlertDialogContent className="text-right" dir="rtl">

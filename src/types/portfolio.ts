@@ -46,9 +46,11 @@ export interface Project {
   updated_at: string;
   created_by: string | null;
   category_id: string | null;
+  client_id: string | null;
   is_published: boolean;
   views: number;
   category?: Category;
+  client?: { id: string; name: string } | null;
   project_media?: ProjectMedia[];
   services?: Service[];
 }
@@ -59,6 +61,7 @@ export interface CreateProjectDTO {
   description?: string;
   cover_image?: string;
   category_id?: string;
+  client_id?: string | null;
   is_published?: boolean;
   service_ids?: string[];
 }
