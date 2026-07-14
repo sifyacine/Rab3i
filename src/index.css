@@ -157,6 +157,29 @@
     overflow-x: hidden;
     width: 100%;
   }
+
+  /* Keep autofilled inputs readable in BOTH themes. Browser autofill otherwise
+     forces its own text/background colours, which hides the password dots and
+     text on dark backgrounds. Bound to the theme tokens so it flips with the
+     light/dark theme. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    caret-color: hsl(var(--foreground));
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--secondary)) inset;
+    box-shadow: 0 0 0 1000px hsl(var(--secondary)) inset;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
+  /* Ensure typed password dots / text always follow the input's text colour
+     (some engines drop `color` for masked text without an explicit fill). */
+  input[type="password"] {
+    -webkit-text-fill-color: currentColor;
+  }
 }
 
 @layer utilities {

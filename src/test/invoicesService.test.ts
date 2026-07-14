@@ -46,6 +46,7 @@ describe("invoiceToPreviewData", () => {
     payment_method: null,
     customer_name: "Acme",
     customer_phone: null,
+    client_id: null,
     status: "unpaid",
   };
 

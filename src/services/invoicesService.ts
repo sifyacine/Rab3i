@@ -23,6 +23,7 @@ export interface Invoice {
   payment_method: string | null;
   customer_name: string;
   customer_phone: string | null;
+  client_id: string | null;
   status: "paid" | "unpaid" | "overdue" | "canceled";
   items?: InvoiceItem[];
 }
@@ -32,6 +33,7 @@ export interface InvoiceInput {
   status: Invoice["status"];
   customer_phone?: string | null;
   payment_method?: string | null;
+  client_id?: string | null;
   items: InvoiceItem[];
 }
 
@@ -149,6 +151,7 @@ export const invoicesService = {
         status: input.status,
         customer_phone: input.customer_phone ?? null,
         payment_method: input.payment_method ?? null,
+        client_id: input.client_id ?? null,
         total,
       }])
       .select()
@@ -167,6 +170,7 @@ export const invoicesService = {
         status: input.status,
         customer_phone: input.customer_phone ?? null,
         payment_method: input.payment_method ?? null,
+        client_id: input.client_id ?? null,
         total,
       })
       .eq('id', id)
@@ -183,5 +187,16 @@ export const invoicesService = {
       .delete()
       .eq('id', id);
     if (error) throw error;
-  }
+  },
+
+  // Invoices belonging to one client (client details page)
+  async getInvoicesByClient(clientId: string) {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data as Invoice[];
+  },
 };
