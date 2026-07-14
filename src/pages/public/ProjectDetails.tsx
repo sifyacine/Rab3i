@@ -91,7 +91,7 @@ const ProjectDetails = () => {
               <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  <span>{new Date(project.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "long" })}</span>
+                  <span>{new Date(project.created_at).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn", { year: "numeric", month: "long" })}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Eye className="w-4 h-4" />

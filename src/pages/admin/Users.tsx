@@ -64,7 +64,7 @@ const Users = () => {
     }
   };
 
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('ar-SA');
+  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn');
 
   const columns = [
     { header: "البريد الإلكتروني", accessorKey: "email" as const },

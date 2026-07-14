@@ -100,7 +100,7 @@ const Requests = () => {
       accessorKey: "created_at" as const,
       cell: (item: GuestRequest) => (
         <span className="text-xs text-muted-foreground">
-          {new Date(item.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" })}
+          {new Date(item.created_at).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn", { year: "numeric", month: "short", day: "numeric" })}
         </span>
       ),
     },

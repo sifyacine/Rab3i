@@ -107,7 +107,7 @@ const InvoicesAdmin = () => {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('ar-SA');
+    return date.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn');
   };
 
   const columns = [

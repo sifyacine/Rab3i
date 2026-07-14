@@ -111,7 +111,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
               transition={{ duration: 0.3 }}
               className="absolute top-4 left-16 flex items-center gap-1.5 rounded-full bg-black/40 backdrop-blur-sm px-3 py-1.5 text-xs text-white/90"
             >
-              <span className="font-medium">{project.views.toLocaleString('ar-SA')}</span>
+              <span className="font-medium">{project.views.toLocaleString('ar-SA-u-ca-gregory-nu-latn')}</span>
               <span className="text-white/60">مشاهدة</span>
             </motion.div>
           )}

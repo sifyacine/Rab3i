@@ -64,7 +64,7 @@ const ProjectDetailsAdmin = () => {
   const categoryName = project.category?.title_ar || project.category?.name || "بدون فئة";
   const media = project.project_media ?? [];
   const services = project.services ?? [];
-  const createdAt = new Date(project.created_at).toLocaleDateString("ar-SA");
+  const createdAt = new Date(project.created_at).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn");
 
   return (
     <motion.div

@@ -3,10 +3,11 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Save, User, Sun, Moon, Share2, Instagram, Facebook, Linkedin, Youtube, ExternalLink, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Save, User, Sun, Moon, Share2, Instagram, Facebook, Linkedin, Youtube, ExternalLink, Loader2, Globe, Wrench, Bell } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -27,6 +28,9 @@ const Settings = () => {
     social_tiktok: "",
   });
 
+  const [site, setSite] = useState({ seo_description: "", maintenance_mode: false });
+  const [notifications, setNotifications] = useState({ notify_new_requests: true, notify_weekly_blog: false });
+
   // Real signed-in staff profile (read-only here; edited at /admin/profile)
   const { data: profile } = useQuery({
     queryKey: ["my-profile", user?.id],
@@ -42,8 +46,13 @@ const Settings = () => {
     },
   });
 
+  // Seed local state once from the DB. Re-seeding on every refetch would wipe
+  // unsaved edits in the other cards whenever one card saves (each save
+  // invalidates the shared ["store-settings"] query).
+  const seeded = useRef(false);
   useEffect(() => {
-    if (settings) {
+    if (settings && !seeded.current) {
+      seeded.current = true;
       setSocialLinks({
         social_facebook: settings.social_facebook || "",
         social_twitter: settings.social_twitter || "",
@@ -52,21 +61,55 @@ const Settings = () => {
         social_youtube: settings.social_youtube || "",
         social_tiktok: settings.social_tiktok || "",
       });
+      setSite({
+        seo_description: settings.seo_description || "",
+        maintenance_mode: Boolean(settings.maintenance_mode),
+      });
+      setNotifications({
+        notify_new_requests: settings.notify_new_requests ?? true,
+        notify_weekly_blog: Boolean(settings.notify_weekly_blog),
+      });
     }
   }, [settings]);
 
+  const saveSettings = (patch: Record<string, unknown>) =>
+    supabase.from("store_settings").update(patch).eq("id", settings?.id);
+
   const socialMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("store_settings").update(socialLinks).eq("id", settings?.id);
+      const { error } = await saveSettings(socialLinks);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["store-settings"] });
       toast.success("تم حفظ روابط التواصل الاجتماعي بنجاح");
     },
-    onError: () => {
-      toast.error("حدث خطأ أثناء الحفظ");
+    onError: () => toast.error("حدث خطأ أثناء الحفظ"),
+  });
+
+  const siteMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await saveSettings(site);
+      if (error) throw error;
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["store-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["maintenance-mode"] });
+      toast.success("تم حفظ إعدادات الموقع");
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحفظ"),
+  });
+
+  const notifyMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await saveSettings(notifications);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["store-settings"] });
+      toast.success("تم حفظ تفضيلات التنبيهات");
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحفظ"),
   });
 
   useEffect(() => {
@@ -149,6 +192,74 @@ const Settings = () => {
                 <Sun className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Site settings — SEO + maintenance mode, persisted to store_settings */}
+        <Card className="border-border/40 bg-card/30">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-primary" />
+              <CardTitle>إعدادات الموقع</CardTitle>
+            </div>
+            <CardDescription>وصف الموقع لمحركات البحث ووضع الصيانة</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="seo">وصف الموقع (SEO)</Label>
+              <Textarea
+                id="seo"
+                rows={2}
+                value={site.seo_description}
+                onChange={(e) => setSite({ ...site, seo_description: e.target.value })}
+                placeholder="ربيعي — الشريك الإبداعي..."
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-border/40 bg-secondary/20 p-3">
+              <div className="space-y-0.5">
+                <Label className="flex items-center gap-2"><Wrench className="h-4 w-4 text-amber-500" /> وضع الصيانة</Label>
+                <p className="text-sm text-muted-foreground">عند تفعيله يرى الزوار صفحة «قيد الصيانة»؛ لا يتأثر فريق العمل ولوحة التحكم.</p>
+              </div>
+              <Switch
+                checked={site.maintenance_mode}
+                onCheckedChange={(v) => setSite({ ...site, maintenance_mode: v })}
+              />
+            </div>
+            <Button onClick={() => siteMutation.mutate()} disabled={siteMutation.isPending} className="bg-gradient-brand">
+              {siteMutation.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}
+              حفظ إعدادات الموقع
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Notification preferences — persisted (delivery pipeline is future work) */}
+        <Card className="border-border/40 bg-card/30">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-primary" />
+              <CardTitle>التنبيهات</CardTitle>
+            </div>
+            <CardDescription>تفضيلات التنبيهات (تُحفظ للاستخدام عند تفعيل الإرسال لاحقاً)</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>تنبيهات الطلبات الجديدة</Label>
+              <Switch
+                checked={notifications.notify_new_requests}
+                onCheckedChange={(v) => setNotifications({ ...notifications, notify_new_requests: v })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>تقارير المدونة الأسبوعية</Label>
+              <Switch
+                checked={notifications.notify_weekly_blog}
+                onCheckedChange={(v) => setNotifications({ ...notifications, notify_weekly_blog: v })}
+              />
+            </div>
+            <Button onClick={() => notifyMutation.mutate()} disabled={notifyMutation.isPending} className="bg-gradient-brand">
+              {notifyMutation.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}
+              حفظ التفضيلات
+            </Button>
           </CardContent>
         </Card>
 

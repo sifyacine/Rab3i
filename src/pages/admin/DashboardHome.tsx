@@ -110,7 +110,7 @@ const DashboardHome = () => {
               <TrendingUp size={14} className={stat.color} />
             </div>
             <div className="text-2xl font-bold text-foreground tabular-nums">
-              {stat.value.toLocaleString("ar-SA")}
+              {stat.value.toLocaleString("ar-SA-u-ca-gregory-nu-latn")}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">{stat.label}</div>
           </motion.div>

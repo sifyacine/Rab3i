@@ -110,16 +110,10 @@ export const usersService = {
     return invokeManageUsers({ action: "unban", userId: id });
   },
 
-  // Non-privileged profile field edits (name/phone/job_title). Role changes go
-  // through setUserRole; RLS must allow managers to update these columns.
+  // Profile field edits (name/phone/job_title) for another user, via the edge
+  // function so no broad manager-write RLS policy is needed. Role changes go
+  // through setUserRole; self-edits use updateOwnProfile.
   async updateUser(id: string, updates: Partial<Pick<Profile, "full_name" | "phone" | "job_title">>) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data as Profile;
+    return invokeManageUsers({ action: "update", userId: id, ...updates });
   },
 };

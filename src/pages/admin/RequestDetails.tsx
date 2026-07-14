@@ -101,7 +101,7 @@ const RequestDetailsAdmin = () => {
             <h1 className="text-2xl font-bold">تفاصيل الطلب</h1>
             <Badge variant="outline" className={cn("text-xs font-medium", cfg.className)}>{cfg.label}</Badge>
           </div>
-          <p className="text-muted-foreground text-sm mt-0.5">#{id?.slice(0, 8)}… — {new Date(request.created_at).toLocaleDateString("ar-SA", { dateStyle: "long" })}</p>
+          <p className="text-muted-foreground text-sm mt-0.5">#{id?.slice(0, 8)}… — {new Date(request.created_at).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn", { dateStyle: "long" })}</p>
         </div>
       </div>
 
@@ -253,7 +253,7 @@ const RequestDetailsAdmin = () => {
                 <Label className="text-xs text-muted-foreground flex items-center gap-1">
                   <Calendar className="h-3 w-3" /> تاريخ الطلب
                 </Label>
-                <p className="text-sm">{new Date(request.created_at).toLocaleDateString("ar-SA", { dateStyle: "long" })}</p>
+                <p className="text-sm">{new Date(request.created_at).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn", { dateStyle: "long" })}</p>
               </div>
               <div className="pt-2 border-t border-border/40">
                 <Label className="text-xs text-muted-foreground">حساب مرتبط</Label>
