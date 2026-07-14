@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { invoicesService, Invoice } from "@/services/invoicesService";
+import { invoicesService, Invoice, computeInvoiceTotals, invoiceToPreviewData, VAT_RATE } from "@/services/invoicesService";
 import InvoicePreviewDialog from "@/components/admin/InvoicePreviewDialog";
 
 const statusConfig: Record<Invoice["status"], { label: string; className: string }> = {
@@ -49,21 +49,19 @@ const InvoiceDetailsAdmin = () => {
 
   const issued = new Date(invoice.created_at).toLocaleDateString("ar-SA");
   const status = statusConfig[invoice.status] ?? statusConfig.unpaid;
+  const items = invoice.items ?? [];
 
-  // Mapped shape the shared preview/PDF dialog expects. Itemised billing is not
-  // stored yet, so we present the invoice total as a single line (see the
-  // invoice-line-items task); print + PDF happen inside the dialog.
-  const previewData = {
-    id: invoice.id,
-    clientName: invoice.customer_name,
-    clientEmail: invoice.customer_phone || "",
-    amount: invoice.total,
-    currency: "ر.س",
-    status: invoice.status,
-    date: issued,
-    dueDate: "—",
-    items: [{ description: "خدمات تصميم وتطوير", quantity: 1, price: invoice.total }],
-  };
+  // Breakdown for display. When items exist they are authoritative; otherwise
+  // derive a net subtotal from the VAT-inclusive stored total (legacy invoices).
+  const totals = items.length
+    ? computeInvoiceTotals(items)
+    : (() => {
+        const subtotal = Math.round((invoice.total / (1 + VAT_RATE)) * 100) / 100;
+        return { subtotal, vat: Math.round((invoice.total - subtotal) * 100) / 100, total: invoice.total };
+      })();
+
+  // print + PDF happen inside the shared dialog (same helper the list uses).
+  const previewData = invoiceToPreviewData(invoice);
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-5xl mx-auto pb-20" dir="rtl">
@@ -96,17 +94,49 @@ const InvoiceDetailsAdmin = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <Card className="lg:col-span-2 border-border/40 bg-card/30">
           <CardHeader className="flex flex-row items-center justify-between border-b border-border/20 mb-4 pb-4">
-            <CardTitle>الإجمالي</CardTitle>
+            <CardTitle>تفاصيل البنود</CardTitle>
             <FileText className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between rounded-xl bg-secondary/10 px-4 py-6">
-              <span className="text-base font-bold">الإجمالي الكلي</span>
-              <span className="text-2xl font-bold font-sans">{invoice.total.toLocaleString()} ر.س</span>
+            {items.length > 0 ? (
+              <table className="w-full">
+                <thead>
+                  <tr className="text-xs text-muted-foreground border-b border-border/20">
+                    <th className="text-right font-medium pb-2">البند</th>
+                    <th className="text-center font-medium pb-2">الكمية</th>
+                    <th className="text-left font-medium pb-2">السعر (صافي)</th>
+                    <th className="text-left font-medium pb-2">المجموع</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/10">
+                  {items.map((item, i) => (
+                    <tr key={item.id ?? i} className="text-sm">
+                      <td className="py-4 font-medium">{item.description || "—"}</td>
+                      <td className="py-4 text-center font-sans">{item.quantity}</td>
+                      <td className="py-4 text-left font-sans">{Number(item.unit_price).toLocaleString()}</td>
+                      <td className="py-4 text-left font-sans">{(Number(item.quantity) * Number(item.unit_price)).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-sm text-muted-foreground pb-4">لا توجد بنود مُفصّلة لهذه الفاتورة — يظهر الإجمالي فقط.</p>
+            )}
+
+            <div className="mt-4 space-y-2 border-t border-border/20 pt-4">
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>المجموع الفرعي</span>
+                <span className="font-sans">{totals.subtotal.toLocaleString()} ر.س</span>
+              </div>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>ضريبة القيمة المضافة (15%)</span>
+                <span className="font-sans">{totals.vat.toLocaleString()} ر.س</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl bg-secondary/10 px-4 py-4 mt-2">
+                <span className="text-base font-bold">الإجمالي (شامل الضريبة)</span>
+                <span className="text-xl font-bold font-sans">{invoice.total.toLocaleString()} ر.س</span>
+              </div>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              تفصيل البنود غير مُخزّن حالياً — يظهر الإجمالي فقط. لعرض/طباعة فاتورة منسّقة استخدم زر «معاينة».
-            </p>
           </CardContent>
         </Card>
 

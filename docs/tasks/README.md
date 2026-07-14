@@ -32,7 +32,7 @@ All of the above type-check, build, and pass the test suite.
 
 | # | Task | Priority | Effort | One-liner |
 |---|---|---|---|---|
-| [T01](T01-invoice-line-items.md) | Invoice line items + VAT | MEDIUM | L | Persist itemised billing; make the PDF total match the record. |
+| ✅ [T01](T01-invoice-line-items.md) | Invoice line items + VAT | MEDIUM | L | **DONE** — persisted itemised billing; PDF total now matches the record. See [T01-COMPLETION-REPORT.md](T01-COMPLETION-REPORT.md). Run `docs/sql/2026-07-14-invoice-items.sql`. |
 | [T02](T02-site-content-cms.md) | Site Content CMS | MEDIUM | L | The `/admin/site-content` editor is still 100% mock — back it with a table. |
 | [T03](T03-store-settings.md) | Settings: SEO / maintenance / notifications | MEDIUM | M | Add `store_settings` columns + wire (and enforce maintenance mode). |
 | [T04](T04-client-project-linking.md) | Client ↔ project linking & counts | MEDIUM | L | `projects` has no `client_id`; the clients "projects" count is unmaintained. |

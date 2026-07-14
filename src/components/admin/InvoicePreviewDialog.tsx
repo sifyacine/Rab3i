@@ -26,6 +26,11 @@ interface InvoiceData {
   date: string;
   dueDate: string;
   items: Array<{ description: string; quantity: number; price: number }>;
+  // Authoritative totals (from invoicesService.computeInvoiceTotals). When
+  // present these are shown verbatim so the grand total matches the stored one.
+  subtotal?: number;
+  vat?: number;
+  total?: number;
 }
 
 interface InvoicePreviewDialogProps {
@@ -112,10 +117,14 @@ const InvoicePreviewDialog = ({ invoice, isOpen, onOpenChange }: InvoicePreviewD
 
   const content = t[lang];
   const isRtl = lang === "ar";
+  const currency = isRtl ? "ر.س" : "SAR";
 
-  const subtotal = invoice.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
-  const tax = subtotal * 0.15;
-  const total = subtotal + tax;
+  // Prefer the authoritative totals (grand total == the stored invoice.total);
+  // fall back to computing from items for older callers.
+  const computedSubtotal = invoice.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
+  const subtotal = invoice.subtotal ?? computedSubtotal;
+  const tax = invoice.vat ?? subtotal * 0.15;
+  const total = invoice.total ?? subtotal + tax;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -203,10 +212,10 @@ const InvoicePreviewDialog = ({ invoice, isOpen, onOpenChange }: InvoicePreviewD
                   <td className="py-6 font-medium">{item.description}</td>
                   <td className="py-6 text-center">{item.quantity}</td>
                   <td className={`py-6 font-medium ${isRtl ? "text-left" : "text-right"}`}>
-                    {item.price.toLocaleString()} {invoice.currency}
+                    {item.price.toLocaleString()} {currency}
                   </td>
                   <td className={`py-6 font-bold ${isRtl ? "text-left" : "text-right"}`}>
-                    {(item.quantity * item.price).toLocaleString()} {invoice.currency}
+                    {(item.quantity * item.price).toLocaleString()} {currency}
                   </td>
                 </tr>
               ))}
@@ -217,15 +226,15 @@ const InvoicePreviewDialog = ({ invoice, isOpen, onOpenChange }: InvoicePreviewD
             <div className="w-full max-w-xs space-y-3">
               <div className="flex justify-between text-slate-500">
                 <span>{content.subtotal}</span>
-                <span>{subtotal.toLocaleString()} {invoice.currency}</span>
+                <span>{subtotal.toLocaleString()} {currency}</span>
               </div>
               <div className="flex justify-between text-slate-500">
                 <span>{content.tax}</span>
-                <span>{tax.toLocaleString()} {invoice.currency}</span>
+                <span>{tax.toLocaleString()} {currency}</span>
               </div>
               <div className="flex justify-between text-xl font-bold border-t pt-3 text-primary">
                 <span>{content.grandTotal}</span>
-                <span>{total.toLocaleString()} {invoice.currency}</span>
+                <span>{total.toLocaleString()} {currency}</span>
               </div>
             </div>
           </div>

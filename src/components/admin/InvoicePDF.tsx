@@ -189,6 +189,10 @@ interface InvoicePDFProps {
     date: string;
     dueDate: string;
     items: InvoiceItem[];
+    // Authoritative totals — when present the grand total equals the stored one.
+    subtotal?: number;
+    vat?: number;
+    total?: number;
   };
   businessInfo: {
     storeName: string;
@@ -218,10 +222,10 @@ const formatCurrency = (amount: number) => {
 };
 
 const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, businessInfo }) => {
-  const subtotal = invoice.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
-  const vatRate = 0.15;
-  const vatAmount = subtotal * vatRate;
-  const total = subtotal + vatAmount;
+  const computedSubtotal = invoice.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
+  const subtotal = invoice.subtotal ?? computedSubtotal;
+  const vatAmount = invoice.vat ?? subtotal * 0.15;
+  const total = invoice.total ?? subtotal + vatAmount;
 
   const statusLabels: Record<string, string> = {
     paid: 'مدفوعة',

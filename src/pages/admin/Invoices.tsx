@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { invoicesService, Invoice } from "@/services/invoicesService";
+import { invoicesService, Invoice, invoiceToPreviewData } from "@/services/invoicesService";
 import { supabase } from "@/lib/supabase";
 
 const InvoicesAdmin = () => {
@@ -58,15 +58,10 @@ const InvoicesAdmin = () => {
 
   const handleDownloadPDF = async (invoice: Invoice) => {
     try {
-      const invoiceData = {
-        id: invoice.id,
-        clientName: invoice.customer_name,
-        clientEmail: invoice.customer_phone || "",
-        status: invoice.status,
-        date: invoice.created_at,
-        dueDate: invoice.created_at,
-        items: [{ description: "خدمات تصميم وتطوير متكاملة", quantity: 1, price: invoice.total }]
-      };
+      // List rows don't carry line items; fetch the full invoice so the PDF
+      // shows real items when they exist (falls back to a single net line).
+      const full = await invoicesService.getInvoiceById(invoice.id);
+      const invoiceData = invoiceToPreviewData(full);
       const blob = await pdf(<InvoicePDF invoice={invoiceData} businessInfo={businessInfo} />).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -83,8 +78,14 @@ const InvoicesAdmin = () => {
     }
   };
 
-  const handlePrint = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
+  const handlePrint = async (invoice: Invoice) => {
+    // Fetch the full invoice so the preview/print shows real line items.
+    try {
+      const full = await invoicesService.getInvoiceById(invoice.id);
+      setSelectedInvoice(full);
+    } catch {
+      setSelectedInvoice(invoice);
+    }
     setIsPreviewOpen(true);
   };
 
@@ -161,8 +162,7 @@ const InvoicesAdmin = () => {
           <>
             <DropdownMenuItem className="gap-2 cursor-pointer" onClick={(e) => {
               e.stopPropagation();
-              setSelectedInvoice(item);
-              setIsPreviewOpen(true);
+              handlePrint(item);
             }}>
               <Eye className="h-4 w-4" />
               معاينة وطباعة
@@ -218,22 +218,10 @@ const InvoicesAdmin = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <InvoicePreviewDialog 
+      <InvoicePreviewDialog
         isOpen={isPreviewOpen}
         onOpenChange={setIsPreviewOpen}
-        invoice={selectedInvoice ? {
-          id: selectedInvoice.id,
-          clientName: selectedInvoice.customer_name,
-          clientEmail: selectedInvoice.customer_phone || "",
-          amount: selectedInvoice.total,
-          currency: "SAR",
-          status: selectedInvoice.status,
-          date: selectedInvoice.created_at,
-          dueDate: selectedInvoice.created_at,
-          items: [
-            { description: "خدمات تصميم وتطوير متكاملة", quantity: 1, price: selectedInvoice.total }
-          ]
-        } : null}
+        invoice={selectedInvoice ? invoiceToPreviewData(selectedInvoice) : null}
       />
     </motion.div>
   );
